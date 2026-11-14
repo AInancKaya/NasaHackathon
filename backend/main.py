@@ -1,22 +1,40 @@
 # AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 # Reviewed and directed by the project author.
 """TerraTrend API (FastAPI). Contract: docs/CONTRACT.md."""
+import asyncio
+import json
+import logging
+import threading
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
-from fastapi.responses import JSONResponse
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import JSONResponse, Response
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from backend.cache import cached_blob
 from backend.catalog import BY_ID, ERA5_DAILY, VARIABLES
 from backend.sources import NoDataError, UpstreamError, era5, power_grid, power_point, power_region
 from backend.stats.field import trend_field
 from backend.stats.trend import analyze_trend
 
-app = FastAPI(title="TerraTrend")
+log = logging.getLogger("terratrend")
+
+
+@asynccontextmanager
+async def _lifespan(_: FastAPI):
+    task = asyncio.create_task(_warm_maps())  # never blocks startup
+    yield
+    task.cancel()
+
+
+app = FastAPI(title="TerraTrend", lifespan=_lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
 class BadRequest(Exception):
@@ -189,31 +207,51 @@ def witness(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query
     }
 
 
-_maps: dict = {}
+_maps: dict[str, bytes] = {}  # serialised /api/trendmap responses, per variable
+_map_locks: dict[str, threading.Lock] = {}  # one computation per variable; concurrent requests wait for it
 
 
-def _map(var: str) -> dict:
-    """Trend map for a variable; computed once per process and per fetch of the grid."""
-    v = _variable(var, "has_map")
+def _compute_map(v: dict) -> bytes:
     grid, fetched_at = power_grid.fetch_grid(v["param"])
-    cached = _maps.get(var)
-    if cached and cached["fetched_at"] == fetched_at:
-        return cached
     years = np.array([int(d[:4]) for d in grid["dates"]])
     keep = (years >= v["start_year"]) & (years <= v["end_year"])
     result = trend_field(grid["values"][keep])
-    out = {
-        "var": var, "lats": grid["lats"].tolist(), "lons": grid["lons"].tolist(),
+    result["slope"] = [[None if x is None else round(x, 4) for x in row] for row in result["slope"]]
+    return json.dumps({
+        "var": v["id"], "lats": grid["lats"].tolist(), "lons": grid["lons"].tolist(),
         **result, "period": [v["start_year"], v["end_year"]],
         "unit": v["unit"], "source": v["source"], "fetched_at": fetched_at,
-    }
-    _maps[var] = out
-    return out
+    }).encode()
+
+
+def _map_bytes(var: str) -> bytes:
+    """Trend map response: memory, then disk (cache/trendmap_*.json), then computed from the grid."""
+    v = _variable(var, "has_map")
+    if var in _maps:
+        return _maps[var]
+    with _map_locks.setdefault(var, threading.Lock()):
+        if var not in _maps:
+            _maps[var] = cached_blob(f"trendmap_{v['param']}.json", lambda: _compute_map(v),
+                                     newer_than=f"power_grid_{v['param']}.npz")
+        return _maps[var]
+
+
+def _map(var: str) -> dict:
+    return json.loads(_map_bytes(var))
+
+
+async def _warm_maps() -> None:
+    """Fill the trend map cache in the background, default map variable first."""
+    for v in [x for x in VARIABLES if x["has_map"]]:
+        try:
+            await asyncio.to_thread(_map_bytes, v["id"])
+        except Exception as e:  # warm-up only; a real request reports the error itself
+            log.warning("warm-up of %s failed: %s", v["id"], e)
 
 
 @app.get("/api/trendmap")
 def trendmap(var: str):
-    return _map(var)
+    return Response(_map_bytes(var), media_type="application/json")
 
 
 @app.get("/api/twin")

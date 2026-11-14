@@ -36,39 +36,47 @@ export function colorAt(stops: RGB[], slope: number, limit: number): RGB {
   return [0, 1, 2].map((k) => Math.round(stops[i][k] + (stops[i + 1][k] - stops[i][k]) * f)) as RGB;
 }
 
-/** Equirectangular canvas: x = lon -180..180, y = lat 90..-90. Null cells stay transparent;
- *  cells that are not significant are drawn faded. */
-export function renderTexture(map: TrendMap, limit: number): HTMLCanvasElement {
+/** Draw the trend colours onto an equirectangular canvas (x = lon -180..180, y = lat 90..-90).
+ *  The grid is first painted one pixel per cell and then scaled up with bilinear smoothing, so the
+ *  ~2 degree cells blend into a smooth surface. Null cells stay transparent; cells that are not
+ *  significant are drawn faded. `alpha` is the overall overlay opacity, so the Earth shows through. */
+export function drawOverlay(ctx: CanvasRenderingContext2D, map: TrendMap, limit: number, alpha: number): void {
+  const { width: W, height: H } = ctx.canvas;
   const nLat = map.lats.length;
   const nLon = map.lons.length;
-  const W = 2048;
-  const H = 1024;
-  const canvas = document.createElement("canvas");
-  canvas.width = W;
-  canvas.height = H;
-  const ctx = canvas.getContext("2d")!;
+  const small = document.createElement("canvas");
+  small.width = nLon;
+  small.height = nLat;
+  const sctx = small.getContext("2d")!;
+  const img = sctx.createImageData(nLon, nLat);
   const stops = divergingStops();
   const fadedAlpha = parseFloat(token("--sig-faded-alpha"));
-  const cw = (W * (map.lons[1] - map.lons[0])) / 360; // cell size from the actual grid spacing
-  const ch = (H * (map.lats[1] - map.lats[0])) / 180;
-  // Edges are rounded to whole pixels from cell centres, so neighbours share an edge exactly:
-  // no gaps, and no double-blended seams on faded cells. EPS keeps float noise from rounding
-  // two copies of the same shared edge differently.
-  const EPS = 1e-6;
+  const northFirst = map.lats[0] > map.lats[nLat - 1];
   for (let i = 0; i < nLat; i++) {
-    const cy = ((90 - map.lats[i]) / 180) * H;
-    const y0 = Math.round(cy - ch / 2 + EPS);
-    const y1 = Math.round(cy + ch / 2 + EPS);
+    const row = northFirst ? i : nLat - 1 - i;
     for (let j = 0; j < nLon; j++) {
       const v = map.slope[i][j];
       if (v === null) continue;
       const [r, g, b] = colorAt(stops, v, limit);
-      ctx.globalAlpha = map.sig[i][j] ? 1 : fadedAlpha;
-      ctx.fillStyle = `rgb(${r},${g},${b})`;
-      const cx = ((map.lons[j] + 180) / 360) * W;
-      const x0 = Math.round(cx - cw / 2 + EPS);
-      ctx.fillRect(x0, y0, Math.round(cx + cw / 2 + EPS) - x0, y1 - y0);
+      const k = (row * nLon + j) * 4;
+      // Near-zero cells are more transparent, so the ocean is not fogged white; strong trends are opaque.
+      const strength = limit > 0 ? Math.min(1, Math.abs(v) / limit) : 0;
+      const a = (0.35 + 0.65 * strength) * (map.sig[i][j] ? 1 : fadedAlpha);
+      img.data.set([r, g, b, Math.round(255 * a)], k);
     }
   }
-  return canvas;
+  sctx.putImageData(img, 0, 0);
+  // Pixel centres sit on the cell centres, so the scaled image spans half a cell beyond them.
+  const cw = (W * (map.lons[1] - map.lons[0])) / 360;
+  const ch = (H * Math.abs(map.lats[1] - map.lats[0])) / 180;
+  const x0 = ((map.lons[0] + 180) / 360) * W - cw / 2;
+  const y0 = ((90 - Math.max(map.lats[0], map.lats[nLat - 1])) / 180) * H - ch / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.filter = "blur(10px)"; // softens the remaining cell edges (ignored by browsers without canvas filters)
+  ctx.drawImage(small, x0, y0, cw * nLon, ch * nLat);
+  ctx.drawImage(small, x0 + W, y0, cw * nLon, ch * nLat); // fills the strip at the date line
+  ctx.restore();
 }
