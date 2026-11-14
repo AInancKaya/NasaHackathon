@@ -1,6 +1,6 @@
 <!-- AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant. -->
 
-# TerraTrend — rules for every session
+# TerraVestige — rules for every session
 
 NASA Space Apps 2026, "Be An Earth System Trend Detective!". Read only this file,
 `docs/CONTRACT.md`, and the folder your task owns. `docs/CONTRACT.md` is the API source of truth;
@@ -28,7 +28,8 @@ change it only in a dedicated, announced step.
 
 ## Language and branding
 
-- **English only** in all files: code, comments, UI text, docs, commit messages.
+- **English only** in all files: code, comments, UI text, docs, commit messages. One exception, chosen by
+  the project author: `README.md` carries a Turkish translation section after the English one.
 - **No NASA logos, emblems, or insignia** anywhere (code, assets, UI, slides).
   Naming NASA as a data source in text is fine.
 

@@ -42,9 +42,10 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
     const el = host.current!;
     let disposed = false;
     let ro: ResizeObserver | undefined;
+    let stopMeteors: (() => void) | undefined;
     // globe.gl and three.js are loaded on demand so the page shell paints first
-    Promise.all([import("globe.gl"), import("three"), import("./overlay"), import("./stars")]).then(
-      ([{ default: Globe }, THREE, ov, st]) => {
+    Promise.all([import("globe.gl"), import("three"), import("./overlay"), import("./stars"), import("./meteors")]).then(
+      ([{ default: Globe }, THREE, ov, st, met]) => {
       if (disposed) return;
       const css = getComputedStyle(document.documentElement);
       // The sun: a directional light kept up and to the left of the camera, so relief and ocean glint
@@ -125,14 +126,15 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
 
       st.createSky(SKY_RADIUS)
         .then((sky) => (disposed ? undefined : g.scene().add(sky)))
-        .catch((e) => console.error("[TerraTrend] star background could not be loaded", e));
+        .catch((e) => console.error("[TerraVestige] star background could not be loaded", e));
+      stopMeteors = met.startMeteors(THREE, g.scene(), camera as InstanceType<typeof THREE.PerspectiveCamera>);
 
       const canvas = renderer.domElement;
       canvas.addEventListener("webglcontextlost", (e) => {
         e.preventDefault(); // allow the browser to restore the context; three.js re-uploads everything
-        console.error("[TerraTrend] WebGL context lost; waiting for the browser to restore it");
+        console.error("[TerraVestige] WebGL context lost; waiting for the browser to restore it");
       });
-      canvas.addEventListener("webglcontextrestored", () => console.warn("[TerraTrend] WebGL context restored"));
+      canvas.addEventListener("webglcontextrestored", () => console.warn("[TerraVestige] WebGL context restored"));
 
       ro = new ResizeObserver(() => g.width(el.clientWidth).height(el.clientHeight));
       ro.observe(el);
@@ -143,6 +145,7 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
       disposed = true;
       clearTimeout(idle.current);
       ro?.disconnect();
+      stopMeteors?.();
       overlay.current?.dispose();
       overlay.current = null;
       globe.current?._destructor();

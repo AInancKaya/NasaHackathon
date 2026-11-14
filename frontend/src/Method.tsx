@@ -56,7 +56,9 @@ export default function Method() {
           </li>
           <li>
             <strong>Autocorrelation:</strong> case-file p-values use the Hamed-Rao variance correction (
-            <A href={doi("10.1016/S0022-1694(97)00125-X")}>Hamed &amp; Rao 1998</A>).
+            <A href={doi("10.1016/S0022-1694(97)00125-X")}>Hamed &amp; Rao 1998</A>); map cells use its lag-1
+            form, so a cell is never more significant on the map than its persistence allows. The map and the case
+            file can still disagree near the threshold: the case file uses the full correction.
           </li>
           <li>
             <strong>Many places at once:</strong> map cells are significant only after Benjamini-Hochberg false

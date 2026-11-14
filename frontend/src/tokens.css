@@ -31,4 +31,17 @@
   --radius: 12px;
   --gap: 12px;
   --gutter: 16px;
+  --topbar: 76px; /* top of panels that sit under the top bar */
+}
+
+/* Water variables (precipitation, soil wetness, humidity, water vapour): ColorBrewer BrBG, 7 classes,
+   reversed so brown = drier (falling) and teal = wetter (rising). Also colour-blind safe. */
+:root[data-palette="wet"] {
+  --div-1: #8c510a;
+  --div-2: #d8b365;
+  --div-3: #f6e8c3;
+  --div-4: #f5f5f5;
+  --div-5: #c7eae5;
+  --div-6: #5ab4ac;
+  --div-7: #01665e;
 }

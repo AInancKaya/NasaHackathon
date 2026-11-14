@@ -1,6 +1,6 @@
 # AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 # Reviewed and directed by the project author.
-"""TerraTrend API (FastAPI). Contract: docs/CONTRACT.md."""
+"""TerraVestige API (FastAPI). Contract: docs/CONTRACT.md."""
 import asyncio
 import json
 import logging
@@ -23,7 +23,7 @@ from backend.sources import NoDataError, UpstreamError, era5, geocode, power_gri
 from backend.stats.field import trend_field
 from backend.stats.trend import analyze_trend
 
-log = logging.getLogger("terratrend")
+log = logging.getLogger("terravestige")
 
 
 @asynccontextmanager
@@ -33,7 +33,7 @@ async def _lifespan(_: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title="TerraTrend", lifespan=_lifespan)
+app = FastAPI(title="TerraVestige", lifespan=_lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
@@ -234,13 +234,13 @@ def _compute_map(v: dict) -> bytes:
 
 
 def _map_bytes(var: str) -> bytes:
-    """Trend map response: memory, then disk (cache/trendmap_*.json), then computed from the grid."""
+    """Trend map response: memory, then disk (cache/trendmap_v2_*.json; v2 = autocorrelation-corrected sig), then computed from the grid."""
     v = _variable(var, "has_map")
     if var in _maps:
         return _maps[var]
     with _map_locks.setdefault(var, threading.Lock()):
         if var not in _maps:
-            _maps[var] = cached_blob(f"trendmap_{v['param']}.json", lambda: _compute_map(v),
+            _maps[var] = cached_blob(f"trendmap_v2_{v['param']}.json", lambda: _compute_map(v),
                                      newer_than=f"power_grid_{v['param']}.npz")
         return _maps[var]
 

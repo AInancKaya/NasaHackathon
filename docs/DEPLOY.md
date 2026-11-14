@@ -1,14 +1,14 @@
 <!-- AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant. Reviewed and directed by the project author. -->
-# Deploying TerraTrend
+# Deploying TerraVestige
 
-TerraTrend runs as one Docker container: the FastAPI backend serves the built React app from
+TerraVestige runs as one Docker container: the FastAPI backend serves the built React app from
 `frontend/dist` on port 7860. The same image runs locally and on a Hugging Face Space.
 
 ## 1. Local check (Docker)
 
 ```bash
-docker build -t terratrend .
-docker run --rm -p 7860:7860 terratrend
+docker build -t terravestige .
+docker run --rm -p 7860:7860 terravestige
 ```
 
 In a second terminal:
@@ -30,7 +30,7 @@ Done by the project author. No token is entered by Claude.
 
    ```yaml
    ---
-   title: TerraTrend
+   title: TerraVestige
    emoji: 🌍
    colorFrom: blue
    colorTo: green
@@ -64,7 +64,7 @@ The container runs as uid 1000, and `/app/cache` is owned by that user, so the d
 
 ## 4. FortiGuard reclassification (user step, after the Space URL is live)
 
-Some school and corporate networks block TerraTrend because FortiGuard has it in the wrong
+Some school and corporate networks block TerraVestige because FortiGuard has it in the wrong
 category. Ask FortiGuard to re-rate the site. Claude does not submit this form.
 
 1. Check the current rating at https://www.fortiguard.com/webfilter (enter the Space URL).

@@ -1,7 +1,7 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
 import { useEffect, useRef } from "react";
-import Plotly from "plotly.js-dist-min";
+import Plotly from "plotly.js-basic-dist-min";
 import type { Series } from "./api";
 
 const token = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();

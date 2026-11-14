@@ -15,8 +15,9 @@ import Wizard from "./Wizard";
 import "./guide.css";
 import "./ui.css";
 import Globe, { type GlobeHandle } from "./Globe";
+import { PALETTE_WORDS, paletteFor } from "./scale";
 
-// The case file pulls in Plotly (a few MB): load it only when someone opens a case.
+// The case file pulls in Plotly (about 1 MB): load it only when someone opens a case.
 const CaseFile = lazy(() => import("./CaseFile"));
 
 function errText(e: unknown): string {
@@ -24,14 +25,15 @@ function errText(e: unknown): string {
 }
 
 type GuideTab = "wizard" | "cases" | "glossary" | "method";
-const TABS: { id: GuideTab; label: string; icon: JSX.Element }[] = [
-  { id: "cases", label: "Case tours", icon: <IconCompass size={18} /> },
-  { id: "wizard", label: "Guide me", icon: <IconInfo size={18} /> },
-  { id: "glossary", label: "Glossary", icon: <IconBook size={18} /> },
-  { id: "method", label: "Method", icon: <IconFlask size={18} /> },
+// `short` is the rail label under the icon; `label` titles the drawer.
+const TABS: { id: GuideTab; label: string; short: string; icon: JSX.Element }[] = [
+  { id: "cases", label: "Case tours", short: "Tours", icon: <IconCompass size={22} /> },
+  { id: "wizard", label: "Guide me", short: "Guide", icon: <IconInfo size={22} /> },
+  { id: "glossary", label: "Glossary", short: "Glossary", icon: <IconBook size={22} /> },
+  { id: "method", label: "Method", short: "Method", icon: <IconFlask size={22} /> },
 ];
 
-const INTRO_KEY = "terratrend.intro.seen";
+const INTRO_KEY = "terravestige.intro.seen";
 function introSeen(): boolean {
   try {
     return localStorage.getItem(INTRO_KEY) === "1";
@@ -183,6 +185,12 @@ export default function App() {
     setIntro(false);
   }, []);
 
+  // Set before the map arrives, so the overlay and legend read the right colour scale.
+  useEffect(() => {
+    document.documentElement.dataset.palette = paletteFor(varId);
+  }, [varId]);
+  const words = PALETTE_WORDS[paletteFor(varId)];
+
   const current = vars?.find((v) => v.id === varId);
   // The old map is still in state for one render after a switch: treat that as loading too.
   const mapLoading = loading || (!!map && map.var !== varId);
@@ -197,7 +205,7 @@ export default function App() {
         <div className="hero">
           <h2>Where is Earth changing, and where is it changing the opposite way?</h2>
           <p>
-            Red is rising, blue is falling, faded is not significant. <strong>Click anywhere</strong> or find your city
+            {words.up[0].toUpperCase() + words.up.slice(1)} is rising, {words.down} is falling, faded is not significant. <strong>Click anywhere</strong> or find your city
             to open its case file.
           </p>
         </div>
@@ -211,38 +219,42 @@ export default function App() {
         </div>
       )}
 
+      <header className="topbar">
+        <div className="brand">
+          <h1>
+            <IconGlobe size={20} /> TerraVestige
+          </h1>
+          <button className="btn icon ghost" onClick={() => setIntro(true)} aria-label="About TerraVestige" title="About">
+            <IconInfo size={18} />
+          </button>
+        </div>
+        <CitySearch
+          ref={search}
+          onPlace={(p) => {
+            openCase({ varId: varId ?? "", lat: p.lat, lon: p.lon });
+            setPlace(p.label);
+          }}
+        />
+      </header>
+
       <div className="leftcol">
-        <header className="panel top">
-          <div className="brand">
-            <h1>
-              <IconGlobe size={20} /> TerraTrend
-            </h1>
-            <button className="btn icon ghost" onClick={() => setIntro(true)} aria-label="About TerraTrend" title="About">
-              <IconInfo size={18} />
-            </button>
-          </div>
+        <div className="panel top">
           <VarPicker vars={vars} value={varId} loading={mapLoading} onChange={setVarId} />
-          <CitySearch
-            ref={search}
-            onPlace={(p) => {
-              openCase({ varId: varId ?? "", lat: p.lat, lon: p.lon });
-              setPlace(p.label);
-            }}
-          />
-          <nav className="tabs" aria-label="Help and tours">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                className="btn tab"
-                aria-pressed={guide === t.id}
-                onClick={() => setGuide(guide === t.id ? null : t.id)}
-              >
-                {t.icon}
-                {t.label}
-              </button>
-            ))}
-          </nav>
-        </header>
+        </div>
+        <nav className="rail" aria-label="Help and tours">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className="rail-btn"
+              aria-pressed={guide === t.id}
+              title={t.label}
+              onClick={() => setGuide(guide === t.id ? null : t.id)}
+            >
+              {t.icon}
+              <span>{t.short}</span>
+            </button>
+          ))}
+        </nav>
 
         {tour !== null && cases && (
           <TourBar cases={cases} index={tour} onGo={goTour} onExit={() => setTour(null)} />

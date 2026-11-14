@@ -1,6 +1,7 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
 import type { TrendMap, Variable } from "./api";
+import { PALETTE_WORDS, paletteFor } from "./scale";
 import { fmtFetched, meta } from "./varmeta";
 
 interface Props {
@@ -49,7 +50,8 @@ export default function Legend({ variable, map, limit, loading, error, onMethod 
             <span>Rising</span>
           </div>
           <p className="sr-only">
-            Blue means falling, white means no change, red means rising. The colour saturates at plus or minus{" "}
+            {PALETTE_WORDS[paletteFor(variable?.id)].down} means falling, white means no change,{" "}
+            {PALETTE_WORDS[paletteFor(variable?.id)].up} means rising. The colour saturates at plus or minus{" "}
             {num(limit)} {map.unit} per decade.
           </p>
           <div className="legend-faded">

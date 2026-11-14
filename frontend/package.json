@@ -1,5 +1,5 @@
 {
-  "name": "terratrend-frontend",
+  "name": "terravestige-frontend",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -10,14 +10,14 @@
   },
   "dependencies": {
     "globe.gl": "^2.46.2",
-    "plotly.js-dist-min": "^4.3.0",
+    "plotly.js-basic-dist-min": "^4.3.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "0.187.0",
     "topojson-client": "3.1.0"
   },
   "devDependencies": {
-    "@types/plotly.js-dist-min": "^2.3.4",
+    "@types/plotly.js-basic-dist-min": "^2.12.4",
     "@types/react": "^18.3.31",
     "@types/react-dom": "^18.3.7",
     "@types/three": "0.187.0",

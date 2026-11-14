@@ -40,7 +40,7 @@ export default function Intro({ period, onTour, onCity, onExplore }: Props) {
     <div className="intro-backdrop" onClick={(e) => e.target === e.currentTarget && onExplore()}>
       <div className="intro" role="dialog" aria-modal="true" aria-labelledby="intro-title" ref={box}>
         <h2 id="intro-title" className="intro-title">
-          <IconGlobe size={26} /> TerraTrend
+          <IconGlobe size={26} /> TerraVestige
         </h2>
         <p className="intro-lead">
           Pick any place on Earth and test whether its climate is really changing, with NASA data{period ? ` from ${period}` : ""} and

@@ -218,11 +218,11 @@ p {
   padding: 14px 16px;
   border: 1px solid color-mix(in srgb, var(--div-7) 45%, var(--border));
   border-radius: var(--radius);
-  background: linear-gradient(90deg, rgb(178 24 43 / 0.16), transparent 70%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--div-7) 16%, transparent), transparent 70%);
 }
 .headline.down {
   border-color: color-mix(in srgb, var(--div-1) 55%, var(--border));
-  background: linear-gradient(90deg, rgb(33 102 172 / 0.2), transparent 70%);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--div-1) 20%, transparent), transparent 70%);
 }
 .headline.flat {
   border-color: var(--border);

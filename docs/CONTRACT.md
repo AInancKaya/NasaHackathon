@@ -108,7 +108,7 @@ Response:
 
 ## `GET /api/witness`
 
-Second, independent dataset (Copernicus ERA5 via Open-Meteo) for the same place and period.
+Second, partly independent dataset (Copernicus ERA5 via Open-Meteo; a different reanalysis, though it assimilates many of the same observations as MERRA-2) for the same place and period.
 
 Query: `var: str`, `lat: float`, `lon: float`, optional `start: int`, `end: int`.
 
@@ -140,7 +140,8 @@ Response:
   lats: float[]                // cell centres, ascending
   lons: float[]                // cell centres, ascending
   slope: (float | null)[][]    // Sen's slope per decade, [lat][lon]
-  sig: (bool | null)[][]       // significant after Benjamini-Hochberg FDR (q = 0.05), [lat][lon]
+  sig: (bool | null)[][]       // significant after a lag-1 autocorrelation correction of each cell's
+                               // seasonal MK p-value, then Benjamini-Hochberg FDR (q = 0.05), [lat][lon]
   period: [int, int]           // [start_year, end_year]
   unit: str
   source: str

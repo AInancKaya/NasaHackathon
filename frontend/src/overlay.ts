@@ -229,7 +229,7 @@ export function createOverlay(radius: number, anisotropy: number, renderer: THRE
   };
   const useFallback = (why: unknown) => {
     if (fallback) return;
-    console.error("[TerraTrend] trend overlay shader failed; switching to the canvas fallback.", why);
+    console.error("[TerraVestige] trend overlay shader failed; switching to the canvas fallback.", why);
     const canvas = document.createElement("canvas");
     canvas.width = 4096;
     canvas.height = 2048;
@@ -272,6 +272,8 @@ export function createOverlay(radius: number, anisotropy: number, renderer: THRE
       uniforms.uHasData.value = false;
       if (!map) return;
       guard(() => {
+        // the scale depends on the variable (data-palette), so read the stops again for every map
+        divergingStops().forEach((c, k) => uniforms.uStops.value[k].set(c[0] / 255, c[1] / 255, c[2] / 255));
         const nLat = map.lats.length;
         const nLon = map.lons.length;
         uniforms.uData.value = dataTexture(map, limit);

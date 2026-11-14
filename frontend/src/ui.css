@@ -860,3 +860,149 @@ a {
     display: none;
   }
 }
+
+/* Shell layout: centered top bar (brand + city search), tool rail beside the left column.
+   Side panels start under the top bar so nothing overlaps it. */
+.topbar {
+  position: absolute;
+  z-index: 4;
+  top: var(--gutter);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: min(600px, calc(100% - 2 * var(--gutter)));
+  padding: 6px 8px 6px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+}
+.topbar .brand {
+  flex: none;
+  gap: 2px;
+  margin: 0;
+}
+.topbar .search {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+}
+.app .leftcol {
+  top: var(--topbar);
+  left: calc(var(--gutter) + 80px);
+  width: min(340px, calc(100% - 2 * var(--gutter) - 80px));
+  max-height: calc(100% - var(--topbar) - var(--gutter) - 250px);
+}
+.app.guide-open .leftcol {
+  max-height: calc(100% - var(--topbar) - var(--gutter));
+}
+.rail {
+  position: absolute;
+  top: 0;
+  right: calc(100% + 8px);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  backdrop-filter: blur(10px);
+}
+.rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  width: 58px;
+  padding: 9px 0 7px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  font: 500 11px/1 var(--font);
+  cursor: pointer;
+  transition: color 150ms, background-color 150ms;
+}
+.rail-btn:hover {
+  color: var(--text);
+  background: rgb(255 255 255 / 0.05);
+}
+.rail-btn[aria-pressed="true"] {
+  color: var(--text);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.rail-btn[aria-pressed="true"] .ico {
+  color: var(--accent);
+}
+@media (min-width: 601px) {
+  .casefile {
+    top: var(--topbar);
+  }
+}
+/* The hero is centred on the screen, under the top bar; below 1400 px the side panels would cover it,
+   and the legend explains the colours there. */
+.hero {
+  top: var(--topbar);
+  left: 0;
+  right: 0;
+  max-width: 520px;
+  padding: 0 var(--gutter);
+}
+@media (max-width: 1399px) {
+  .hero {
+    display: none;
+  }
+}
+@media (max-width: 600px) {
+  .topbar {
+    top: max(10px, env(safe-area-inset-top));
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    width: calc(100% - 20px);
+    padding: 6px 8px 8px 12px;
+  }
+  .topbar .brand {
+    flex: 1;
+  }
+  .topbar .search {
+    flex-basis: 100%;
+  }
+  .app .leftcol {
+    top: 132px;
+    left: 10px;
+    width: calc(100% - 20px);
+  }
+  .rail {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    padding: 4px;
+  }
+  .rail-btn {
+    width: auto;
+    min-height: 48px;
+  }
+  /* With a case or a tour open, keep only the variable picker at the top */
+  .app.has-case .topbar,
+  .app.touring .topbar,
+  .app.has-case .rail,
+  .app.touring .rail {
+    display: none;
+  }
+  .app.has-case .leftcol,
+  .app.touring .leftcol {
+    top: max(10px, env(safe-area-inset-top));
+  }
+}
+
+/* Case file: scale note under the place line */
+.cf-scale {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+}

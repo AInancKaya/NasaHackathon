@@ -139,6 +139,11 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
           <span className="eyebrow">Case file</span>
           <h2 className="cf-title">{variable.name}</h2>
           <span className="cf-place mono">{box ? `${box}° box around ${place(lat, lon)}` : place(lat, lon)}</span>
+          {!box && (
+            <span className="cf-scale">
+              A regional average from a model grid cell about 50 km across, not a street-level measurement.
+            </span>
+          )}
         </div>
         <div className="cf-tools">
           <button className="btn icon" onClick={share} aria-label="Share this case" title="Share this case">
@@ -255,8 +260,8 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
                   <span className="pill yes">{witness.agrees ? "ERA5 agrees" : "ERA5 disagrees"}</span>
                   <p className="small">
                     {witness.agrees
-                      ? "An independent dataset shows the same direction of change here."
-                      : "An independent dataset shows the opposite direction here. Treat this trend with caution."}
+                      ? "A second, partly independent dataset shows the same direction of change here."
+                      : "A second, partly independent dataset shows the opposite direction here. Treat this trend with caution."}
                     {box ? " This check compares the centre point, not the whole box." : ""}
                   </p>
                   <p className="mono small">
