@@ -124,6 +124,12 @@ export const IconShare = (p: P) => (
     <path d="M14 10a4 4 0 0 0-5.7 0l-3.2 3.2a4 4 0 0 0 5.7 5.7l1-1" />
   </Svg>
 );
+export const IconPrint = (p: P) => (
+  <Svg {...p}>
+    <path d="M7 9V4h10v5M7 17H5a1 1 0 0 1-1-1v-6a1 1 0 0 1 1-1h14a1 1 0 0 1 1 1v6a1 1 0 0 1-1 1h-2" />
+    <path d="M7 14h10v6H7z" />
+  </Svg>
+);
 export const IconCheck = (p: P) => (
   <Svg {...p}>
     <path d="M5 12.5l4.5 4.5L19 7.5" />

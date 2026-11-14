@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, getSeries, getTwin, getWitness, type Series, type Variable, type Witness } from "./api";
 import EvidenceChart, { type Compare } from "./EvidenceChart";
-import { IconCheck, IconClose, IconShare } from "./icons";
+import { IconCheck, IconClose, IconPrint, IconShare } from "./icons";
 import { fmtFetched } from "./varmeta";
 import VerdictCards from "./VerdictCards";
+import "./print.css";
 
 const errText = (e: unknown) => (e instanceof ApiError ? `${e.error}: ${e.detail}` : "Unexpected error.");
 const CLOSE_MS = 180; // exit is quicker than the 280 ms entrance
@@ -148,6 +149,9 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto, pap
           )}
         </div>
         <div className="cf-tools">
+          <button className="btn icon" onClick={() => window.print()} aria-label="Print this case" title="Print this case">
+            <IconPrint size={18} />
+          </button>
           <button className="btn icon" onClick={share} aria-label="Share this case" title="Share this case">
             {shared === "copied" ? <IconCheck size={18} /> : <IconShare size={18} />}
           </button>
@@ -252,6 +256,7 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto, pap
           <p className="muted small">
             {series.source} · fetched {fmtFetched(series.fetched_at)}
           </p>
+          <p className="print-only small">Case link: {link}</p>
         </>
       )}
 
@@ -295,6 +300,15 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto, pap
             </p>
           )}
         </div>
+      </section>
+
+      <section className="print-only cf-questions" aria-hidden="true">
+        <h3 className="cf-h">Questions for the class</h3>
+        <ol>
+          <li>Is this trend statistically significant? What does that tell you, and what does it not tell you?</li>
+          <li>What does the second dataset say about this place? If it disagrees, what could explain that?</li>
+          <li>Why might the opposite twin behave differently? Which physical factors could differ between the two places?</li>
+        </ol>
       </section>
     </aside>
   );

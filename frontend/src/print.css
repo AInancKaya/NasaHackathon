@@ -1,0 +1,89 @@
+/* AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
+   Reviewed and directed by the project author. */
+
+/* Print-only blocks stay hidden on screen. */
+.print-only {
+  display: none;
+}
+
+@media print {
+  @page {
+    margin: 9mm;
+  }
+  /* Drop everything but the case file: globe, top bar, left column (picker, rail, guide, tour bar),
+     legend, credit, intro dialog and any other sibling of the case file. */
+  body > *:not(#root),
+  .app > *:not(.casefile) {
+    display: none !important;
+  }
+  html,
+  body,
+  #root,
+  .app {
+    height: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+  }
+  .casefile {
+    position: static !important;
+    width: auto !important;
+    max-height: none !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    animation: none !important;
+    backdrop-filter: none !important;
+    box-shadow: none !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    font-size: 9pt;
+    line-height: 1.3;
+  }
+  .casefile,
+  .casefile * {
+    color: #000 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    border-color: #666 !important;
+    text-shadow: none !important;
+  }
+  /* Screen-only chrome inside the case file. */
+  .casefile .sheet-grip,
+  .casefile .cf-tools,
+  .casefile .cf-shared,
+  .casefile .cf-skeleton,
+  .casefile .btn,
+  .casefile .actions .cf-h {
+    display: none !important;
+  }
+  .casefile .print-only {
+    display: block;
+    margin: 6px 0 0;
+    word-break: break-all;
+  }
+  .casefile .cf-block,
+  .casefile .cards {
+    margin-top: 8px;
+  }
+  .casefile .card,
+  .casefile .headline,
+  .casefile .witness {
+    break-inside: avoid;
+    border: 1px solid #666;
+  }
+  /* The chart is drawn in light-on-dark colours: invert it to dark-on-white. */
+  .casefile .js-plotly-plot {
+    max-width: 100%;
+    overflow: hidden;
+    filter: invert(1) hue-rotate(180deg);
+  }
+  .casefile .cf-questions {
+    margin-top: 12px;
+    padding-top: 8px;
+    border-top: 1px solid #666;
+    break-inside: avoid;
+  }
+  .casefile .cf-questions ol {
+    margin: 4px 0 0;
+    padding-left: 18px;
+  }
+}

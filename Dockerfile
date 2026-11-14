@@ -30,5 +30,14 @@ COPY --from=frontend /build/frontend/dist ./frontend/dist
 RUN mkdir -p /app/cache && chown -R user:user /app
 
 USER user
+
+# Fill cache/ from the live sources while the image is built (every trend map, the case tours), so a
+# cold start serves them from disk instead of reading NASA again (about a minute per map). Each entry
+# keeps its fetched_at. A failed fetch only logs a warning: that entry is then fetched on first request.
+# The raw grids are dropped; only the computed trend maps are needed at run time.
+RUN python -c "import asyncio, backend.main as m; asyncio.run(m._warm_maps())" \
+    && rm -f cache/power_grid_*.npz \
+    && echo "cache entries: $(ls cache | wc -l)"
+
 EXPOSE 7860
 CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "7860"]
