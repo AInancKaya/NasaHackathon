@@ -9,7 +9,7 @@ export default function VerdictCards({ series, unit }: { series: Series; unit: s
   const { verdict: v, stats: s } = series;
   return (
     <div className="cards">
-      <section className="card">
+      <section className="card span">
         <h3>What</h3>
         <p>{v.what}</p>
       </section>

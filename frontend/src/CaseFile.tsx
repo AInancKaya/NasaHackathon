@@ -1,11 +1,20 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ApiError, getSeries, getTwin, getWitness, type Series, type Variable, type Witness } from "./api";
 import EvidenceChart from "./EvidenceChart";
 import VerdictCards from "./VerdictCards";
 
 const errText = (e: unknown) => (e instanceof ApiError ? `${e.error}: ${e.detail}` : "Unexpected error.");
+const CLOSE_MS = 180; // exit is quicker than the 280 ms entrance
+
+const place = (lat: number, lon: number) =>
+  `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? "E" : "W"}`;
+
+function signed(x: number): string {
+  const r = Math.abs(x) >= 0.01 || x === 0 ? x.toFixed(2) : x.toPrecision(2);
+  return x > 0 ? `+${r}` : r.replace("-", "−");
+}
 
 interface Props {
   variable: Variable;
@@ -21,6 +30,9 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
   const [error, setError] = useState<string | null>(null);
   const [witness, setWitness] = useState<Witness | null>(null);
   const [witnessError, setWitnessError] = useState<string | null>(null);
+  const [witnessBusy, setWitnessBusy] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const witnessAc = useRef<AbortController | null>(null);
   const [twinMsg, setTwinMsg] = useState<string | null>(null);
   const [twinBusy, setTwinBusy] = useState(false);
   const id = variable.id;
@@ -31,12 +43,37 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
     setError(null);
     setWitness(null);
     setWitnessError(null);
+    setWitnessBusy(false);
     setTwinMsg(null);
-    const fail = (set: (m: string) => void) => (e: Error) => e.name !== "AbortError" && set(errText(e));
-    getSeries(id, lat, lon, ac.signal, box).then(setSeries).catch(fail(setError));
-    if (variable.has_witness) getWitness(id, lat, lon, ac.signal).then(setWitness).catch(fail(setWitnessError));
-    return () => ac.abort();
-  }, [id, lat, lon, box, variable.has_witness]);
+    getSeries(id, lat, lon, ac.signal, box)
+      .then(setSeries)
+      .catch((e: Error) => e.name !== "AbortError" && setError(errText(e)));
+    return () => {
+      ac.abort();
+      witnessAc.current?.abort();
+    };
+  }, [id, lat, lon, box]);
+
+  // The ERA5 check is on demand: it is a second upstream request, so only run it when asked.
+  async function checkWitness() {
+    const ac = new AbortController();
+    witnessAc.current = ac;
+    setWitnessBusy(true);
+    setWitnessError(null);
+    try {
+      setWitness(await getWitness(id, lat, lon, ac.signal));
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+      setWitnessError(errText(e));
+    }
+    setWitnessBusy(false);
+  }
+
+  function close() {
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return onClose();
+    setClosing(true);
+    setTimeout(onClose, CLOSE_MS);
+  }
 
   async function findTwin() {
     setTwinBusy(true);
@@ -51,31 +88,58 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
     setTwinBusy(false);
   }
 
+  const st = series?.stats;
+  const rising = st ? st.sen_per_decade > 0 : false;
+  const years = series ? `${series.dates[0].slice(0, 4)}–${series.dates[series.dates.length - 1].slice(0, 4)}` : "";
+
   return (
-    <aside className="panel casefile" aria-label="Case file">
-      <div className="cf-head">
+    <aside className={`panel casefile${closing ? " closing" : ""}`} aria-label="Case file">
+      <div className="sheet-grip" aria-hidden="true" />
+      <header className="cf-head">
         <div>
-          <span className="muted">Case file · {variable.name}</span>
-          <strong className="mono block">
-            {lat.toFixed(2)}°, {lon.toFixed(2)}°
-          </strong>
+          <span className="eyebrow">Case file</span>
+          <h2 className="cf-title">{variable.name}</h2>
+          <span className="cf-place mono">{box ? `${box}° box around ${place(lat, lon)}` : place(lat, lon)}</span>
         </div>
-        <button className="btn" onClick={onClose} aria-label="Close case file">
+        <button className="btn icon" onClick={close} aria-label="Close case file">
           ✕
         </button>
-      </div>
+      </header>
 
       {error ? (
-        <p className="error" role="alert">
+        <p className="error cf-block" role="alert">
           {error}
         </p>
-      ) : !series ? (
-        <p role="status" className="muted">
-          Loading evidence…
-        </p>
+      ) : !series || !st ? (
+        <div className="cf-block cf-loading" role="status">
+          <div className="spinner" aria-hidden="true" />
+          Gathering the evidence…
+        </div>
       ) : (
         <>
-          <EvidenceChart series={series} unit={variable.unit} />
+          <section
+            className={`headline ${!series.verdict.significant ? "flat" : rising ? "up" : "down"}`}
+            aria-label="Verdict"
+          >
+            <div className="headline-value">
+              <span className="num mono">{signed(st.sen_per_decade)}</span>
+              <span className="unit">{variable.unit} per decade</span>
+            </div>
+            <div className="headline-meta">
+              <span className={`pill ${series.verdict.significant ? "yes" : "no"}`}>
+                {series.verdict.significant ? "Significant" : "Not significant"}
+              </span>
+              <span className="muted">
+                {st.trend === "no trend" ? "No clear trend" : rising ? "Rising" : "Falling"} · {years}
+              </span>
+            </div>
+          </section>
+
+          <section className="cf-block" aria-label="Evidence chart">
+            <h3 className="cf-h">The evidence</h3>
+            <EvidenceChart series={series} unit={variable.unit} />
+          </section>
+
           <VerdictCards series={series} unit={variable.unit} />
           <p className="muted small">
             {series.source} · fetched {series.fetched_at}
@@ -83,35 +147,41 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
         </>
       )}
 
-      {variable.has_witness && (
-        <div className="witness" aria-live="polite">
-          {witnessError ? (
-            <p className="error">{witnessError}</p>
-          ) : !witness ? (
-            <p className="muted">Checking a second dataset…</p>
-          ) : (
-            <>
-              <span className={`badge ${witness.agrees ? "agree" : "disagree"}`}>
-                {witness.agrees ? "ERA5 agrees" : "ERA5 disagrees"}
-              </span>
-              <p className="muted mono">
-                {witness.source}: {witness.sen_per_decade.toFixed(2)} {variable.unit}/decade · NASA POWER:{" "}
-                {witness.primary_sen_per_decade.toFixed(2)} {variable.unit}/decade
-              </p>
-              <p className="muted small">fetched {witness.fetched_at}</p>
-            </>
+      <section className="cf-block actions" aria-label="Next steps">
+        <h3 className="cf-h">Test it</h3>
+        {variable.has_witness && (
+          <div className="action">
+            <button className="btn wide" onClick={checkWitness} disabled={witnessBusy || !!witness}>
+              {witnessBusy ? "Asking ERA5…" : witness ? "Second dataset checked" : "Ask a second dataset (ERA5)"}
+            </button>
+            <div aria-live="polite">
+              {witnessError && <p className="error small">{witnessError}</p>}
+              {witness && (
+                <div className={`witness ${witness.agrees ? "agree" : "disagree"}`}>
+                  <span className="pill yes">{witness.agrees ? "ERA5 agrees" : "ERA5 disagrees"}</span>
+                  <p className="mono small">
+                    ERA5 {signed(witness.sen_per_decade)} · NASA POWER {signed(witness.primary_sen_per_decade)}{" "}
+                    {variable.unit}/decade
+                  </p>
+                  <p className="muted small">
+                    {witness.source} · fetched {witness.fetched_at}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="action">
+          <button className="btn wide primary" onClick={findTwin} disabled={twinBusy}>
+            {twinBusy ? "Searching…" : "Fly to the opposite twin"}
+          </button>
+          {twinMsg && (
+            <p className="muted" role="status">
+              {twinMsg}
+            </p>
           )}
         </div>
-      )}
-
-      <button className="btn wide" onClick={findTwin} disabled={twinBusy}>
-        {twinBusy ? "Searching…" : "Fly to the opposite twin"}
-      </button>
-      {twinMsg && (
-        <p className="muted" role="status">
-          {twinMsg}
-        </p>
-      )}
+      </section>
     </aside>
   );
 }

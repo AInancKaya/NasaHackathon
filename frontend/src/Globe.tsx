@@ -3,7 +3,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type GlobeGL from "globe.gl";
 import type { TrendMap } from "./api";
-import { BASE_URL, BUMP_URL, compose, loadBasemap, type Basemap } from "./basemap";
+import { BUMP_URL, EARTH_FALLBACK_URL, EARTH_URL, SKY_URL, linesCanvas } from "./basemap";
+import type { Overlay } from "./overlay";
 import { slopeLimit } from "./scale";
 
 export interface GlobeHandle {
@@ -26,21 +27,20 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
   const onPickRef = useRef(onPick);
   onPickRef.current = onPick;
 
+  const overlay = useRef<Overlay | null>(null);
   const [ready, setReady] = useState(false);
-  const [basemap, setBasemap] = useState<Basemap | null>(null);
 
   useEffect(() => {
     const el = host.current!;
     let disposed = false;
     let ro: ResizeObserver | undefined;
-    loadBasemap().then((b) => !disposed && setBasemap(b));
-    // globe.gl (three.js) is loaded on demand so the page shell paints first
-    import("globe.gl").then(({ default: Globe }) => {
+    // globe.gl and three.js are loaded on demand so the page shell paints first
+    Promise.all([import("globe.gl"), import("three"), import("./overlay")]).then(([{ default: Globe }, THREE, ov]) => {
       if (disposed) return;
       const css = getComputedStyle(document.documentElement);
       const g = new Globe(el)
         .backgroundColor(css.getPropertyValue("--bg").trim())
-        .globeImageUrl(BASE_URL) // the Earth is visible at once; the trend overlay is composited in later
+        .backgroundImageUrl(SKY_URL)
         .bumpImageUrl(BUMP_URL)
         .atmosphereColor(css.getPropertyValue("--accent").trim())
         .atmosphereAltitude(0.18)
@@ -53,6 +53,28 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
       g.pointOfView({ altitude: el.clientWidth < 600 ? 3.4 : 2.5 });
       g.controls().autoRotate = false;
       globe.current = g;
+
+      // Earth imagery at full sharpness: mipmaps plus the GPU's maximum anisotropic filtering, so the
+      // texture stays crisp at grazing angles near the limb instead of smearing.
+      const anisotropy = g.renderer().capabilities.getMaxAnisotropy();
+      const applyEarth = (tex: InstanceType<typeof THREE.Texture>) => {
+        if (disposed) return tex.dispose();
+        tex.colorSpace = THREE.SRGBColorSpace;
+        tex.anisotropy = anisotropy;
+        const mat = g.globeMaterial() as InstanceType<typeof THREE.MeshPhongMaterial>;
+        mat.map = tex;
+        mat.color.set("#ffffff");
+        mat.needsUpdate = true;
+      };
+      const loader = new THREE.TextureLoader().setCrossOrigin("anonymous");
+      loader.load(EARTH_URL, applyEarth, undefined, () => loader.load(EARTH_FALLBACK_URL, applyEarth));
+
+      const o = ov.createOverlay(g.getGlobeRadius(), anisotropy);
+      g.scene().add(o.mesh);
+      overlay.current = o;
+      // 8k lines on large screens; 4k on phones keeps GPU memory low
+      linesCanvas(el.clientWidth < 768 ? 4096 : 8192).then((c) => !disposed && o.setLines(c));
+
       ro = new ResizeObserver(() => g.width(el.clientWidth).height(el.clientHeight));
       ro.observe(el);
       setReady(true);
@@ -60,6 +82,8 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
     return () => {
       disposed = true;
       ro?.disconnect();
+      overlay.current?.dispose();
+      overlay.current = null;
       globe.current?._destructor();
       el.replaceChildren();
       globe.current = null;
@@ -67,22 +91,12 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
   }, []);
 
   useEffect(() => {
-    const g = globe.current;
-    if (!g || !basemap) return;
-    let cancelled = false;
+    // A null map (another variable is loading, or it failed) clears the overlay, so the previous
+    // variable's colours are never shown under the new variable's name.
     const limit = map ? slopeLimit(map) : 0;
     if (map) onLimit(limit);
-    const alpha = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--overlay-alpha"));
-    compose(basemap, map, limit, alpha).then((blob) => {
-      if (cancelled || !blob) return;
-      const url = URL.createObjectURL(blob);
-      g.globeImageUrl(url);
-      setTimeout(() => URL.revokeObjectURL(url), 10_000); // by then the texture has been decoded
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [map, onLimit, ready, basemap]);
+    overlay.current?.setMap(map, limit);
+  }, [map, onLimit, ready]);
 
   useEffect(() => {
     globe.current?.pointsData(picked ? [picked] : []);
