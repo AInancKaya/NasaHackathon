@@ -1,0 +1,208 @@
+---
+title: TerraTrend
+emoji: 🌍
+colorFrom: blue
+colorTo: green
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
+<!-- AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant. Reviewed and directed by the project author. -->
+
+# TerraTrend 🌍 — Be an Earth System Trend Detective
+
+**NASA Space Apps Challenge 2026** · Challenge: *Be An Earth System Trend Detective!*
+
+**English** · [Türkçe](#türkçe)
+
+---
+
+## English
+
+### What is TerraTrend?
+
+The same Earth variable can rise in one place and fall in another. TerraTrend shows this on a 3D globe.
+Pick a variable, see where it is rising or falling across the whole planet, click any spot, and open a
+"case file" that tells you, in plain words, what is changing, where, by how much, and whether the change
+is statistically real. Everything is computed live from real data. There is no synthetic or bundled data.
+
+### Features
+
+1. **Global trend globe.** A 3D Earth coloured by the trend of the chosen variable (Sen's slope per decade).
+   Cells whose trend is not statistically significant are faded, so noise is not mistaken for signal.
+   Significance on the map uses Benjamini-Hochberg false-discovery-rate correction (q = 0.05).
+2. **Case file for any place.** Click the globe (the case tours analyse a box average, up to 10° wide, instead of one point). You get the monthly series, the seasonality-free anomaly, a trend line with a 95% confidence band,
+   and four answer cards: **What** is changing, **Where**, **How much**, and **Is it significant?**
+3. **Evidence chart.** An interactive chart of the data, the fitted trend and its confidence band.
+4. **Second witness.** The trend is re-computed from an independent dataset (Copernicus ERA5 through Open-Meteo)
+   and a badge shows whether both datasets agree on the direction. Available for 8 of 10 variables.
+5. **Opposite twin.** Finds the cell with the strongest significant trend in the *opposite* direction and flies
+   the globe there. This answers the challenge's core idea: a variable can go up here and down there.
+6. **"How many more years?"** If a trend is not yet significant, the case file estimates how many more years of
+   data would be needed to detect it (Weatherhead et al., 1998).
+7. **Detective guide.** A three-question wizard (what are you curious about, where, what kind of place) that
+   suggests a variable, plus a plain-language glossary and a short definition and "why it matters" for every variable.
+8. **Ready-made case tours.** Five guided investigations (Arctic warming, the Antarctic Peninsula pause, the
+   Mediterranean rainfall, the Sahel's rain, the US Southwest's soil moisture). Each links to a peer-reviewed
+   paper. The tours store only place, variable and citation. Every number is computed live.
+9. **Honest errors.** If a data source fails, the API returns a clear error. It never silently shows fallback data.
+   Every result shows when its data was fetched (`fetched_at`).
+
+### Variables (10)
+
+Surface air temperature, daily maximum temperature, daily minimum temperature, precipitation, surface soil
+wetness, relative humidity, wind speed, total column water vapour (NASA POWER / MERRA-2), plus surface solar
+radiation and cloud cover (NASA POWER / CERES). The first 8 have a global trend map. Eight variables have a
+second-witness check against ERA5.
+
+### Methods
+
+- Seasonal Mann-Kendall test and Sen's slope, with a 95% confidence interval for the slope.
+- Hamed-Rao correction of the p-value for autocorrelation. The "significant" verdict uses this corrected p-value.
+- OLS regression on the anomalies and a Welch t-test (first half vs second half) as supporting evidence.
+- Benjamini-Hochberg FDR across all map cells (Wilks, 2016).
+- Years-to-detect estimate (Weatherhead et al., 1998).
+- A vectorised map implementation is checked against the `pymannkendall` library in the test suite.
+- Significance level α = 0.05. Slopes are per decade, in SI-based units shown next to every number
+  (°C, mm/day, m/s, kg/m², MJ/m²/day, % and fraction).
+
+### Data sources (all live, no login)
+
+- **NASA POWER** point and regional APIs (MERRA-2 and CERES).
+- **NASA POWER Zarr** on the open AWS bucket `nasa-power` (global grid for the trend maps).
+- **Copernicus ERA5** through the **Open-Meteo** archive API (the second witness).
+
+Responses are cached on disk (`cache/`, git-ignored) together with the original fetch time. No data files are in this repository.
+
+### Architecture
+
+- **Backend:** Python, FastAPI, xarray + zarr + s3fs, pandas, numpy, scipy, pymannkendall (`backend/`).
+- **Frontend:** React + TypeScript + Vite, globe.gl / three.js, Plotly (`frontend/`).
+- **Deployment:** one Docker container serving the API and the built frontend on port 7860 (Hugging Face Spaces compatible). See [docs/DEPLOY.md](docs/DEPLOY.md).
+- **API contract:** [docs/CONTRACT.md](docs/CONTRACT.md).
+
+### Run locally
+
+```bash
+pip install -r requirements.txt
+cd frontend && npm install && npm run build && cd ..
+uvicorn backend.main:app --port 7860
+# open http://localhost:7860
+```
+
+Tests: `pytest`.
+
+### Use of artificial intelligence
+
+This project was built with assistance from **Claude (Anthropic)**, an AI coding assistant, used through
+Claude Code. Claude helped write the code, tests and documentation. The project author set the idea and the
+requirements, directed the work, and reviewed the results. Each source file carries an AI-disclosure header.
+**No AI model runs inside the product at request time.** All verdict texts are rule-based and all numbers come
+from live data and the statistical code above.
+
+### Branding and units
+
+No NASA logos, emblems or insignia are used. NASA is named only as a data source. Units follow the International
+System of Units (SI) or are shown explicitly next to every value.
+
+### Acknowledgements
+
+NASA POWER Project, NASA Earth science data, Copernicus Climate Change Service (ERA5), Open-Meteo, and the
+open-source libraries listed above.
+
+---
+
+## Türkçe
+
+### TerraTrend nedir?
+
+Aynı Dünya değişkeni bir yerde artarken başka bir yerde azalabilir. TerraTrend bunu 3D bir küre üzerinde gösterir.
+Bir değişken seç, gezegenin neresinde arttığını ya da azaldığını gör, herhangi bir noktaya tıkla ve bir "vaka dosyası"
+aç. Dosya sade bir dille neyin değiştiğini, nerede, ne kadar değiştiğini ve değişimin istatistiksel olarak gerçek olup
+olmadığını söyler. Her şey gerçek veriden, anlık hesaplanır. Sentetik ya da depoya gömülü veri yoktur.
+
+### Özellikler
+
+1. **Küresel trend küresi.** Seçilen değişkenin trendine (on yıl başına Sen eğimi) göre renklenen 3D Dünya.
+   Trendi istatistiksel olarak anlamlı olmayan hücreler soluk gösterilir, böylece gürültü sinyal sanılmaz.
+   Haritadaki anlamlılık Benjamini-Hochberg yanlış keşif oranı düzeltmesiyle (q = 0,05) belirlenir.
+2. **Her yer için vaka dosyası.** Küreye tıkla (vaka turları tek nokta yerine 10°'ye kadar bir kutunun ortalamasını analiz eder).
+   Aylık seri, mevsimselliği çıkarılmış anomali, %95 güven bandıyla trend çizgisi ve dört cevap kartı gelir:
+   **Ne** değişiyor, **Nerede**, **Ne kadar** ve **Anlamlı mı?**
+3. **Kanıt grafiği.** Veriyi, uydurulan trendi ve güven bandını gösteren etkileşimli grafik.
+4. **İkinci tanık.** Trend, bağımsız bir veri setiyle (Open-Meteo üzerinden Copernicus ERA5) yeniden hesaplanır.
+   Bir rozet, iki veri setinin yön konusunda uyuşup uyuşmadığını gösterir. 10 değişkenin 8'inde vardır.
+5. **Zıt ikiz.** Zıt yönde en güçlü anlamlı trende sahip hücreyi bulur ve küreyi oraya uçurur. Görevin ana fikrini
+   karşılar: bir değişken burada artarken orada azalabilir.
+6. **"Kaç yıl daha gerekir?"** Trend henüz anlamlı değilse, trendi yakalamak için kaç yıllık ek veri gerektiğini
+   tahmin eder (Weatherhead ve ark., 1998).
+7. **Dedektif rehberi.** Üç soruluk bir sihirbaz (neyi merak ediyorsun, nerede, ne tür bir yer) değişken önerir.
+   Ayrıca sade bir sözlük ve her değişken için kısa bir tanım ile "neden önemli" açıklaması bulunur.
+8. **Hazır vaka turları.** Beş rehberli inceleme: Arktik ısınması, Antarktika Yarımadası'ndaki duraklama, Akdeniz
+   yağışları, Sahel yağmurları, ABD Güneybatısı toprak nemi. Her biri hakemli bir makaleye bağlanır. Turlar yalnızca
+   yer, değişken ve atıf içerir. Bütün sayılar canlı hesaplanır.
+9. **Dürüst hatalar.** Bir veri kaynağı çökerse API açık bir hata döner. Sessizce yedek veri göstermez.
+   Her sonuç, verinin ne zaman çekildiğini (`fetched_at`) gösterir.
+
+### Değişkenler (10)
+
+Yüzey hava sıcaklığı, günlük en yüksek sıcaklık, günlük en düşük sıcaklık, yağış, yüzey toprak nemi, bağıl nem,
+rüzgâr hızı, toplam sütun su buharı (NASA POWER / MERRA-2) ve yüzey güneş radyasyonu ile bulut örtüsü
+(NASA POWER / CERES). İlk 8'inin küresel trend haritası vardır. 8 değişkende ERA5 ile ikinci tanık kontrolü yapılır.
+
+### Yöntemler
+
+- Mevsimsel Mann-Kendall testi ve Sen eğimi, eğim için %95 güven aralığıyla.
+- p-değerinin otokorelasyon için Hamed-Rao düzeltmesi. "Anlamlı" kararı bu düzeltilmiş p-değerine dayanır.
+- Destekleyici kanıt olarak anomaliler üzerinde OLS regresyonu ve Welch t-testi (ilk yarı ve ikinci yarı).
+- Tüm harita hücreleri için Benjamini-Hochberg FDR (Wilks, 2016).
+- "Kaç yıl gerekir" tahmini (Weatherhead ve ark., 1998).
+- Vektörel harita uygulaması, test paketinde `pymannkendall` kütüphanesiyle karşılaştırılır.
+- Anlamlılık düzeyi α = 0,05. Eğimler on yıl başınadır. Her sayının yanında birim yazar (SI tabanlı:
+  °C, mm/gün, m/s, kg/m², MJ/m²/gün, % ve oran).
+
+### Veri kaynakları (hepsi canlı, girişsiz)
+
+- **NASA POWER** nokta ve bölgesel API'leri (MERRA-2 ve CERES).
+- Açık AWS kovası `nasa-power` üzerindeki **NASA POWER Zarr** (trend haritaları için küresel ızgara).
+- **Open-Meteo** arşiv API'si üzerinden **Copernicus ERA5** (ikinci tanık).
+
+Yanıtlar, ilk çekim zamanıyla birlikte diske (`cache/`, git'e girmez) önbelleğe alınır. Depoda veri dosyası yoktur.
+
+### Mimari
+
+- **Backend:** Python, FastAPI, xarray + zarr + s3fs, pandas, numpy, scipy, pymannkendall (`backend/`).
+- **Frontend:** React + TypeScript + Vite, globe.gl / three.js, Plotly (`frontend/`).
+- **Dağıtım:** API'yi ve derlenmiş arayüzü 7860 portunda sunan tek Docker konteyneri (Hugging Face Spaces uyumlu).
+  Bkz. [docs/DEPLOY.md](docs/DEPLOY.md).
+- **API sözleşmesi:** [docs/CONTRACT.md](docs/CONTRACT.md).
+
+### Yerelde çalıştırma
+
+```bash
+pip install -r requirements.txt
+cd frontend && npm install && npm run build && cd ..
+uvicorn backend.main:app --port 7860
+# http://localhost:7860 adresini aç
+```
+
+Testler: `pytest`.
+
+### Yapay zeka kullanımı
+
+Bu proje, Claude Code üzerinden kullanılan yapay zeka kodlama asistanı **Claude (Anthropic)** desteğiyle geliştirildi.
+Claude kodun, testlerin ve belgelerin yazılmasına yardım etti. Proje sahibi fikri ve gereksinimleri belirledi, işi
+yönlendirdi ve sonuçları gözden geçirdi. Her kaynak dosyada yapay zeka kullanım bildirimi başlığı bulunur.
+**Ürünün içinde, çalışma anında hiçbir yapay zeka modeli çalışmaz.** Bütün karar metinleri kural tabanlıdır ve bütün
+sayılar canlı veriden ve yukarıdaki istatistik kodundan gelir.
+
+### Marka ve birimler
+
+NASA logosu, amblemi ya da armasının hiçbiri kullanılmamıştır. NASA yalnızca veri kaynağı olarak anılır. Birimler
+Uluslararası Birim Sistemi'ne (SI) uygundur ya da her değerin yanında açıkça yazılıdır.
+
+### Teşekkür
+
+NASA POWER Projesi, NASA Dünya bilimi verileri, Copernicus İklim Değişikliği Servisi (ERA5), Open-Meteo ve yukarıda
+sayılan açık kaynak kütüphaneler.
