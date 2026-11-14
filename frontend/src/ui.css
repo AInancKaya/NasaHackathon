@@ -694,9 +694,6 @@ a {
 }
 
 @media (max-width: 600px) {
-  .hero {
-    display: none; /* the intro and the legend explain the colours on phones */
-  }
   .app .leftcol {
     top: max(10px, env(safe-area-inset-top));
     left: 10px;
@@ -943,20 +940,6 @@ a {
     top: var(--topbar);
   }
 }
-/* The hero is centred on the screen, under the top bar; below 1400 px the side panels would cover it,
-   and the legend explains the colours there. */
-.hero {
-  top: var(--topbar);
-  left: 0;
-  right: 0;
-  max-width: 520px;
-  padding: 0 var(--gutter);
-}
-@media (max-width: 1399px) {
-  .hero {
-    display: none;
-  }
-}
 @media (max-width: 600px) {
   .topbar {
     top: max(10px, env(safe-area-inset-top));
@@ -1005,4 +988,64 @@ a {
   margin-top: 2px;
   font-size: 12px;
   color: var(--text-muted);
+}
+
+/* Globe marker for the picked place: label card, stem, and a pulsing dot whose centre is the point */
+.pin {
+  width: 0;
+  height: 0;
+  pointer-events: none;
+}
+.pin-body {
+  position: absolute;
+  left: 0;
+  bottom: -6px; /* the dot's centre lands on the anchor */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform: translateX(-50%);
+}
+.pin-label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-width: 300px;
+  padding: 7px 12px;
+  background: var(--surface-solid);
+  border: 1px solid var(--accent);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 0.5);
+  text-align: center;
+  white-space: nowrap;
+}
+.pin-label strong {
+  max-width: 276px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+.pin-label span {
+  font: 11px var(--font-mono);
+  color: var(--text-muted);
+}
+.pin-stem {
+  width: 2px;
+  height: 30px;
+  background: linear-gradient(var(--accent), color-mix(in srgb, var(--accent) 30%, transparent));
+}
+.pin-dot {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--text);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 60%, transparent);
+  animation: pin-pulse 1.8s ease-out infinite;
+}
+@keyframes pin-pulse {
+  to {
+    box-shadow: 0 0 0 14px transparent;
+  }
 }

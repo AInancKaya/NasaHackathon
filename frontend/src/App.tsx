@@ -15,7 +15,8 @@ import Wizard from "./Wizard";
 import "./guide.css";
 import "./ui.css";
 import Globe, { type GlobeHandle } from "./Globe";
-import { PALETTE_WORDS, paletteFor } from "./scale";
+import { placeAt } from "./geocode";
+import { paletteFor } from "./scale";
 
 // The case file pulls in Plotly (about 1 MB): load it only when someone opens a case.
 const CaseFile = lazy(() => import("./CaseFile"));
@@ -84,6 +85,7 @@ export default function App() {
     link.current?.lat !== undefined ? { lat: link.current.lat, lon: link.current.lon! } : null,
   );
   const [place, setPlace] = useState<string | null>(null);
+  const [clickedName, setClickedName] = useState<string | null>(null);
   const [box, setBox] = useState<number | null>(link.current?.box ?? null);
   const [guide, setGuide] = useState<GuideTab | null>(null);
   const [cases, setCases] = useState<Case[] | null>(null);
@@ -185,11 +187,22 @@ export default function App() {
     setIntro(false);
   }, []);
 
+  // A clicked point has no name yet: look up the nearest city and country for the marker and case file.
+  useEffect(() => {
+    setClickedName(null);
+    if (!picked || place) return;
+    const ac = new AbortController();
+    placeAt(picked.lat, picked.lon, ac.signal)
+      .then(setClickedName)
+      .catch(() => {});
+    return () => ac.abort();
+  }, [picked, place]);
+  const placeLabel = place ?? clickedName;
+
   // Set before the map arrives, so the overlay and legend read the right colour scale.
   useEffect(() => {
     document.documentElement.dataset.palette = paletteFor(varId);
   }, [varId]);
-  const words = PALETTE_WORDS[paletteFor(varId)];
 
   const current = vars?.find((v) => v.id === varId);
   // The old map is still in state for one render after a switch: treat that as loading too.
@@ -199,17 +212,7 @@ export default function App() {
 
   return (
     <div className={`app${tour !== null ? " touring" : ""}${picked ? " has-case" : ""}${guide ? " guide-open" : ""}`}>
-      <Globe ref={globe} map={map} picked={picked} onPick={onPick} onLimit={setLimit} />
-
-      {!picked && tour === null && (
-        <div className="hero">
-          <h2>Where is Earth changing, and where is it changing the opposite way?</h2>
-          <p>
-            {words.up[0].toUpperCase() + words.up.slice(1)} is rising, {words.down} is falling, faded is not significant. <strong>Click anywhere</strong> or find your city
-            to open its case file.
-          </p>
-        </div>
-      )}
+      <Globe ref={globe} map={map} picked={picked} label={placeLabel} onPick={onPick} onLimit={setLimit} />
 
       {!everLoaded && !error && (
         <div className="loading" role="status">
@@ -288,7 +291,7 @@ export default function App() {
 
       {picked && current && (
         <Suspense fallback={<section className="panel casefile muted">Opening the case file…</section>}>
-          <PlaceName.Provider value={place}>
+          <PlaceName.Provider value={placeLabel}>
             <CaseFile
               variable={current}
               lat={picked.lat}

@@ -209,3 +209,15 @@ Place {
 
 Errors: 400 `bad_request` for a missing or empty `q`; 404 `not_found` when no place matches;
 502 `upstream_error` when the geocoding service fails.
+
+## `GET /api/reverse`
+
+Added after S0 (announced addition; no existing field changed). Nearest named place for a point,
+through OpenStreetMap Nominatim, so the globe marker and case file can name a clicked place.
+Not a data endpoint: no numbers. Only the point is sent upstream.
+
+Query: `lat: float` (-90..90), `lon: float` (-180..180).
+
+Response: one `Place` (as in `/api/geocode`; `name` is the city, town or region, `lat`/`lon` echo
+the query rounded to 0.01°). `404 not_found` when there is no named place (open ocean).
+
