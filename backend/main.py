@@ -141,6 +141,11 @@ def geocode_place(q: str = Query(..., min_length=1, max_length=100)):
     return geocode.search(query)
 
 
+@app.get("/api/reverse")
+def reverse_place(lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
+    return geocode.reverse(lat, lon)
+
+
 def _variable(var: str, need: str | None = None) -> dict:
     v = BY_ID.get(var)
     if v is None:

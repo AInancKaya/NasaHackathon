@@ -410,30 +410,7 @@ p {
   }
 }
 
-/* First-glance explanation, loading state, imagery credit */
-.hero {
-  position: absolute;
-  z-index: 1;
-  top: var(--gutter);
-  left: calc(2 * var(--gutter) + 340px);
-  right: var(--gutter);
-  max-width: 620px;
-  margin: 0 auto;
-  text-align: center;
-  pointer-events: none;
-  text-shadow: 0 1px 8px var(--bg), 0 0 2px var(--bg);
-}
-.hero h2 {
-  margin: 0;
-  font-size: 22px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-.hero p {
-  margin: 6px 0 0;
-  font-size: 14px;
-  color: var(--text);
-}
+/* Loading state, imagery credit */
 .loading {
   position: absolute;
   z-index: 1;
@@ -485,22 +462,6 @@ p {
   font-size: 10px;
   color: var(--text-muted);
   pointer-events: none;
-}
-@media (max-width: 900px) {
-  .hero {
-    left: var(--gutter);
-    max-width: none;
-  }
-  .hero h2 {
-    font-size: 16px;
-  }
-  .hero p {
-    font-size: 12px;
-    margin-top: 4px;
-  }
-  .app .leftcol {
-    top: 112px; /* below the headline */
-  }
 }
 @media (max-width: 600px) {
   .credit {

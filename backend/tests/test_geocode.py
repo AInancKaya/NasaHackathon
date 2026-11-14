@@ -1,9 +1,9 @@
 # AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 # Reviewed and directed by the project author.
-"""Tests for /api/geocode. The upstream is replaced by artificial responses here only."""
+"""Tests for /api/geocode and /api/reverse. The upstream is replaced by artificial responses here only."""
 import pytest
 import requests
-from backend.main import BadRequest, geocode_place
+from backend.main import BadRequest, geocode_place, reverse_place
 from backend.sources import NoDataError, UpstreamError, geocode
 
 
@@ -46,3 +46,18 @@ def test_upstream_failure_raises_upstream_error(monkeypatch, resp, exc):
 def test_blank_query_is_bad_request():
     with pytest.raises(BadRequest):
         geocode_place("   ")
+
+
+def test_reverse_names_city_and_country(monkeypatch):
+    geocode._reverse.cache_clear()
+    _patch(monkeypatch, _Resp(200, {"address": {"suburb": "X", "city": "Ankara", "province": "Ankara",
+                                                "country": "Turkey"}}))
+    assert reverse_place(39.9199, 32.854) == {"name": "Ankara", "country": "Turkey", "admin1": None,
+                                              "lat": 39.92, "lon": 32.85}
+
+
+def test_reverse_open_ocean_is_not_found(monkeypatch):
+    geocode._reverse.cache_clear()
+    _patch(monkeypatch, _Resp(200, {"error": "Unable to geocode"}))
+    with pytest.raises(NoDataError):
+        reverse_place(0.0, -30.0)

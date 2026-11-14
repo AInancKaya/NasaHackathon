@@ -155,3 +155,5 @@ export const getTwin = (v: string, lat: number, lon: number, signal?: AbortSigna
 export const getCases = (signal?: AbortSignal) => get<Case[]>("/api/cases", signal);
 export const getGeocode = (name: string, signal?: AbortSignal) =>
   get<GeoPlace[]>(`/api/geocode?q=${encodeURIComponent(name)}`, signal);
+export const getReverse = (lat: number, lon: number, signal?: AbortSignal) =>
+  get<GeoPlace>(`/api/reverse?lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`, signal);

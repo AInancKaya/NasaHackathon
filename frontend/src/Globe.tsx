@@ -15,6 +15,8 @@ export interface GlobeHandle {
 interface Props {
   map: TrendMap | null;
   picked: { lat: number; lon: number } | null;
+  /** "City, Country" for the picked point, shown on its marker; null while unknown (coordinates only). */
+  label: string | null;
   onPick: (lat: number, lon: number) => void;
   onLimit: (limit: number) => void;
 }
@@ -24,7 +26,7 @@ type GlobeInstance = InstanceType<typeof GlobeGL>;
 const IDLE_MS = 6000; // auto-rotate after this long without interaction
 const SKY_RADIUS = 40000; // beyond the furthest zoom (100 globe radii), inside the camera's far plane
 
-const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPick, onLimit }, ref) {
+const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, label, onPick, onLimit }, ref) {
   const host = useRef<HTMLDivElement>(null);
   const globe = useRef<GlobeInstance | null>(null);
   const onPickRef = useRef(onPick);
@@ -62,7 +64,11 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
         .pointRadius(1.2)
         .pointAltitude(0.02)
         .pointColor(() => css.getPropertyValue("--accent").trim())
-        .onGlobeClick(({ lat, lng }) => onPickRef.current(lat, lng));
+        .onGlobeClick(({ lat, lng }) => onPickRef.current(lat, lng))
+        .htmlLng((d) => (d as { lon: number }).lon)
+        .htmlAltitude(0.005)
+        .htmlTransitionDuration(0)
+        .htmlElement((d) => (d as { el: HTMLElement }).el);
       g.pointOfView({ altitude: el.clientWidth < 600 ? 3.4 : 2.5 });
       globe.current = g;
 
@@ -162,8 +168,12 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
     overlay.current?.setMap(map, limit);
   }, [map, onLimit, ready]);
 
+  // Marker for the picked place: a pin whose tip sits on the point, with the place name and coordinates.
   useEffect(() => {
-    globe.current?.pointsData(picked ? [picked] : []);
+    globe.current?.htmlElementsData(picked ? [{ ...picked, el: pinElement(picked.lat, picked.lon, label) }] : []);
+  }, [picked, label, ready]);
+
+  useEffect(() => {
     // Hold still while a case file is open; resume the idle rotation when it closes.
     if (picked) stopRotateRef.current();
     else scheduleRotateRef.current();
@@ -178,5 +188,27 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
 
   return <div ref={host} className="globe" role="img" aria-label="Interactive globe of trend slope per grid cell" />;
 });
+
+function pinElement(lat: number, lon: number, label: string | null): HTMLElement {
+  const coords = `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? "E" : "W"}`;
+  const el = document.createElement("div");
+  el.className = "pin"; // zero-size anchor: the renderer centres it on the point
+  const body = document.createElement("div");
+  body.className = "pin-body";
+  const tag = document.createElement("div");
+  tag.className = "pin-label";
+  const name = document.createElement("strong");
+  name.textContent = label ?? "Selected point"; // text from an outside service: never innerHTML
+  const sub = document.createElement("span");
+  sub.textContent = coords;
+  tag.append(name, sub);
+  const stem = document.createElement("div");
+  stem.className = "pin-stem";
+  const dot = document.createElement("div");
+  dot.className = "pin-dot";
+  body.append(tag, stem, dot);
+  el.append(body);
+  return el;
+}
 
 export default Globe;
