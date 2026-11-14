@@ -93,7 +93,7 @@ Responses are cached on disk (`cache/`, git-ignored) together with the original 
 
 - **Backend:** Python, FastAPI, xarray + zarr + s3fs, pandas, numpy, scipy, pymannkendall (`backend/`).
 - **Frontend:** React + TypeScript + Vite, globe.gl / three.js, Plotly (`frontend/`).
-- **Deployment:** one Docker container serving the API and the built frontend on port 7860 (Hugging Face Spaces compatible). See [docs/DEPLOY.md](docs/DEPLOY.md).
+- **Deployment:** one Docker container serving the API and the built frontend on port 7860 (deployable to Google Cloud Run). See [docs/DEPLOY.md](docs/DEPLOY.md).
 - **API contract:** [docs/CONTRACT.md](docs/CONTRACT.md).
 
 ### Run locally
@@ -201,7 +201,7 @@ Yanıtlar, ilk çekim zamanıyla birlikte diske (`cache/`, git'e girmez) önbell
 
 - **Backend:** Python, FastAPI, xarray + zarr + s3fs, pandas, numpy, scipy, pymannkendall (`backend/`).
 - **Frontend:** React + TypeScript + Vite, globe.gl / three.js, Plotly (`frontend/`).
-- **Dağıtım:** API'yi ve derlenmiş arayüzü 7860 portunda sunan tek Docker konteyneri (Hugging Face Spaces uyumlu).
+- **Dağıtım:** API'yi ve derlenmiş arayüzü 7860 portunda sunan tek Docker konteyneri (Google Cloud Run ile dağıtılabilir).
   Bkz. [docs/DEPLOY.md](docs/DEPLOY.md).
 - **API sözleşmesi:** [docs/CONTRACT.md](docs/CONTRACT.md).
 
