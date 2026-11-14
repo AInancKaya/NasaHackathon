@@ -36,13 +36,17 @@ enter credentials or payment details.
 2. Deploy from the folder that holds the Dockerfile. The container listens on 7860, so set `--port`:
 
    ```bash
-   gcloud run deploy trend-detective --source . --region europe-west1 --port 7860 --memory 1Gi --allow-unauthenticated
+   gcloud run deploy trend-detective --source . --region europe-west1 --port 7860 --memory 1Gi --allow-unauthenticated --min-instances 1 --cpu-boost
    ```
+
+   `--min-instances 1` keeps one instance running, so no visitor waits for a cold start (about 12 s);
+   it is billed while idle. Leave it out to scale to zero and rely on the keep-alive below.
 
 3. The command prints a `Service URL`. Check it: `<service-url>/api/variables` must return HTTP 200.
 
 The container runs as uid 1000, and `/app/cache` is owned by that user. Cloud Run's disk is not
-persistent, so the cache is rebuilt after each new instance starts; every value is still fetched live.
+persistent, so the image build fills the cache from the live sources (trend maps and case tours; it adds
+several minutes to the build). A new instance starts with that cache; anything else is fetched live.
 
 ### Custom domain (optional)
 
@@ -59,7 +63,7 @@ The certificate is issued automatically after the DNS record resolves. Check wit
 
 ## 3. Keep-alive
 
-`.github/workflows/keep-alive.yml` pings `/api/variables` every 4 hours to reduce cold starts.
+`.github/workflows/keep-alive.yml` pings `/api/variables` every 10 minutes, so an instance that may scale to zero stays up.
 
 1. In GitHub: **Settings → Secrets and variables → Actions → Variables → New repository variable**.
 2. Name: `APP_URL`. Value: the public app URL, e.g. `https://app.terravestige.earth` (no trailing path).

@@ -768,7 +768,7 @@ a {
   .app .legend {
     left: 10px;
     width: calc(100% - 20px);
-    bottom: max(26px, env(safe-area-inset-bottom));
+    bottom: max(40px, env(safe-area-inset-bottom)); /* clears the two-line imagery credit */
     padding: 8px 12px;
   }
   .legend .legend-faded {
@@ -782,7 +782,8 @@ a {
   .guide {
     left: 0 !important;
     right: 0 !important;
-    height: 70dvh !important;
+    height: auto !important; /* short wizard steps do not leave an empty sheet */
+    max-height: 70dvh;
     z-index: 6;
     padding-bottom: max(16px, env(safe-area-inset-bottom));
     border-radius: 18px 18px 0 0;
@@ -973,8 +974,9 @@ a {
   .app.has-case .topbar,
   .app.touring .topbar,
   .app.has-case .rail,
-  .app.touring .rail {
-    display: none;
+  .app.touring .rail,
+  .app.guide-open .rail {
+    display: none; /* the guide sheet would cover it; its own close button returns here */
   }
   .app.has-case .leftcol,
   .app.touring .leftcol {

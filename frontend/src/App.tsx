@@ -221,7 +221,7 @@ export default function App() {
         <div className="loading" role="status">
           <div className="spinner" aria-hidden="true" />
           {current ? `Loading the ${current.name.toLowerCase()} map…` : "Loading the trend map…"}
-          <span>The first load can take up to 30 s while NASA data is read. Later loads are instant.</span>
+          <span>Reading NASA climate records for the whole planet{period ? `, ${period}` : ""}.</span>
         </div>
       )}
 

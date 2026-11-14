@@ -16,8 +16,8 @@ real? It colours the planet by the trend of 14 NASA variables across the atmosph
 land (1981–2025), fades out every place where the trend is not statistically significant, and opens a
 "case file" for any city or point: how fast it is changing, whether that is real (seasonal Mann-Kendall
 with an autocorrelation correction), whether an independent dataset agrees, and where on Earth the
-same variable is moving the opposite way. Every number is computed live from NASA data; nothing is
-pre-made or simulated.
+same variable is moving the opposite way. Every number is computed from NASA data fetched live from the source; nothing is
+simulated or hand-entered.
 
 ## Links
 
@@ -57,7 +57,7 @@ every grid cell it runs a seasonal Mann-Kendall test and Sen's slope, corrects t
 month-to-month persistence, and applies Benjamini-Hochberg false-discovery-rate control across the
 map. Case files use the Hamed-Rao autocorrelation-corrected test. The React and three.js frontend draws
 the trend field on a globe with a GPU shader. Results are cached with their fetch time, which the
-interface shows.
+interface shows; the deployed image fills that cache from the live sources when it is built.
 
 **Why it matters.** Climate change is not uniform, and a single global average hides that. TerraVestige
 lets a student, a teacher or a journalist test their own place in a minute, with the same statistics
@@ -69,7 +69,7 @@ Limits are stated in the app: reanalysis is not a station record, and a case fil
 average about 50 km across.
 
 **Tools.** Python (FastAPI, xarray, zarr, s3fs, NumPy, SciPy, pandas, pymannkendall), TypeScript
-(React, Vite), three.js and globe.gl, Plotly, Docker, Hugging Face Spaces.
+(React, Vite), three.js and globe.gl, Plotly, Docker, Google Cloud Run.
 
 ## Space agency data
 
