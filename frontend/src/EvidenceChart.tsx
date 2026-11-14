@@ -17,16 +17,20 @@ export default function EvidenceChart({ series, unit }: { series: Series; unit: 
     const raw = token("--div-2");
     const anom = token("--div-6");
     const fit = token("--text");
+    const text = token("--text");
     const d = series.dates;
-    const axis = { gridcolor: grid, zerolinecolor: grid, linecolor: grid, tickfont: { color: muted, size: 11 } };
+    const axis = {
+      gridcolor: "rgba(255,255,255,0.06)", zerolinecolor: grid, linecolor: grid, showline: true,
+      tickfont: { color: muted, size: 11 }, ticks: "outside" as const, tickcolor: grid, ticklen: 4,
+    };
     const traces = [
       { x: d, y: series.lo, mode: "lines", line: { width: 0 }, hoverinfo: "skip", showlegend: false },
       {
         x: d, y: series.hi, mode: "lines", line: { width: 0 }, fill: "tonexty",
-        fillcolor: "rgba(241,245,249,0.16)", name: "95% band", hoverinfo: "skip",
+        fillcolor: "rgba(241,245,249,0.12)", name: "95% band", hoverinfo: "skip",
       },
       { x: d, y: series.values, mode: "lines", line: { color: raw, width: 1 }, name: "Monthly values", connectgaps: false },
-      { x: d, y: series.fit, mode: "lines", line: { color: fit, width: 2 }, name: "Trend" },
+      { x: d, y: series.fit, mode: "lines", line: { color: fit, width: 2.5 }, name: "Trend" },
       {
         x: d, y: series.anomaly, mode: "lines", line: { color: anom, width: 1 }, name: "Anomaly",
         xaxis: "x", yaxis: "y2", connectgaps: false,
@@ -36,13 +40,14 @@ export default function EvidenceChart({ series, unit }: { series: Series; unit: 
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: "rgba(0,0,0,0)",
       font: { color: muted, family: token("--font") },
-      margin: { l: 48, r: 8, t: 8, b: 32 },
-      height: 340,
+      margin: { l: 52, r: 8, t: 4, b: 28 },
+      height: 320,
       legend: { orientation: "h", y: -0.12, font: { size: 11 } },
       xaxis: { ...axis, type: "date" },
       yaxis: { ...axis, domain: [0.42, 1], title: { text: unit, font: { size: 11 } } },
       yaxis2: { ...axis, domain: [0, 0.34], title: { text: `anomaly (${unit})`, font: { size: 11 } } },
       hovermode: "x unified",
+      hoverlabel: { bgcolor: token("--surface-solid"), bordercolor: grid, font: { color: text, size: 12 } },
     };
     Plotly.react(el, traces, layout, { responsive: true, displayModeBar: false });
   }, [series, unit]);

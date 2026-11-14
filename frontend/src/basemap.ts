@@ -2,31 +2,22 @@
 // Reviewed and directed by the project author.
 import type { MultiLineString } from "geojson";
 import type { GeometryCollection, Topology } from "topojson-specification";
-import type { TrendMap } from "./api";
-import { drawOverlay } from "./scale";
 
-// Pinned CDN versions. Blue Marble imagery from the three-globe examples; borders from Natural Earth.
-export const BASE_URL = "https://unpkg.com/three-globe@2.45.6/example/img/earth-blue-marble.jpg";
+// Earth: NASA Blue Marble Next Generation (Dec 2004, topography + bathymetry, 5400 x 2700), served with
+// open CORS by NASA Science; the 4096 x 2048 copy in the pinned three-globe package is the fallback.
+export const EARTH_URL =
+  "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/december/world.topo.bathy.200412.3x5400x2700.jpg";
+export const EARTH_FALLBACK_URL = "https://unpkg.com/three-globe@2.45.6/example/img/earth-blue-marble.jpg";
 export const BUMP_URL = "https://unpkg.com/three-globe@2.45.6/example/img/earth-topology.png";
-const ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-110m.json";
+export const SKY_URL = "https://unpkg.com/three-globe@2.45.6/example/img/night-sky.png";
+const ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json";
 
-export interface Basemap {
-  image: HTMLImageElement | null; // null when the imagery could not be loaded
+interface Lines {
   coast: MultiLineString | null;
   borders: MultiLineString | null;
 }
 
-function loadImage(url: string): Promise<HTMLImageElement | null> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous"; // needed to draw the image into a canvas
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = url;
-  });
-}
-
-async function loadLines(): Promise<Pick<Basemap, "coast" | "borders">> {
+async function loadLines(): Promise<Lines> {
   try {
     const [res, { mesh }] = await Promise.all([fetch(ATLAS_URL), import("topojson-client")]);
     if (!res.ok) throw new Error(String(res.status));
@@ -40,10 +31,6 @@ async function loadLines(): Promise<Pick<Basemap, "coast" | "borders">> {
   }
 }
 
-export async function loadBasemap(): Promise<Basemap> {
-  const [image, lines] = await Promise.all([loadImage(BASE_URL), loadLines()]);
-  return { image, ...lines };
-}
 
 function strokeLines(ctx: CanvasRenderingContext2D, g: MultiLineString, color: string, width: number): void {
   const { width: W, height: H } = ctx.canvas;
@@ -63,20 +50,17 @@ function strokeLines(ctx: CanvasRenderingContext2D, g: MultiLineString, color: s
   ctx.stroke();
 }
 
-/** One equirectangular texture: Blue Marble, the smoothed trend overlay (when a map is given),
- *  then coastlines and borders on top. Returned as a blob so the globe can load it by URL. */
-export function compose(base: Basemap, map: TrendMap | null, limit: number, alpha: number): Promise<Blob | null> {
+/** Coastlines and borders on a transparent equirectangular canvas (null if they could not be loaded). */
+export async function linesCanvas(width: number): Promise<HTMLCanvasElement | null> {
+  const { coast, borders } = await loadLines();
+  if (!coast && !borders) return null;
   const canvas = document.createElement("canvas");
-  canvas.width = 4096;
-  canvas.height = 2048;
+  canvas.width = width;
+  canvas.height = width / 2;
   const ctx = canvas.getContext("2d")!;
-  if (base.image) ctx.drawImage(base.image, 0, 0, canvas.width, canvas.height);
-  else {
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue("--surface-solid").trim();
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
-  if (map) drawOverlay(ctx, map, limit, alpha);
-  if (base.borders) strokeLines(ctx, base.borders, "rgba(255,255,255,0.3)", 1.5);
-  if (base.coast) strokeLines(ctx, base.coast, "rgba(255,255,255,0.6)", 2);
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+  ctx.lineJoin = ctx.lineCap = "round";
+  const px = width / 4096; // line widths are tuned for a 4096-wide texture
+  if (borders) strokeLines(ctx, borders, "rgba(255,255,255,0.35)", 1.25 * px);
+  if (coast) strokeLines(ctx, coast, "rgba(255,255,255,0.6)", 1.5 * px);
+  return canvas;
 }

@@ -102,7 +102,7 @@ export default function App() {
       {(loading || !vars) && !error && (
         <div className="loading" role="status">
           <div className="spinner" aria-hidden="true" />
-          Loading the trend map…
+          {current ? `Loading the ${current.name.toLowerCase()} map…` : "Loading the trend map…"}
           <span>The first load can take up to 30 s while NASA data is read. Later loads are instant.</span>
         </div>
       )}
@@ -157,6 +157,7 @@ export default function App() {
       <section className="panel legend" aria-label="Legend">
         {error ? (
           <p className="error" role="alert">
+            {mapError && current ? `The ${current.name.toLowerCase()} map could not be loaded. ` : ""}
             {error}
           </p>
         ) : loading || !vars ? (
@@ -168,11 +169,14 @@ export default function App() {
             </div>
             <div className="bar" aria-hidden="true" />
             <div className="ticks mono">
-              <span>−{limit.toPrecision(2)}</span>
+              <span>≤ −{limit.toPrecision(2)}</span>
               <span>0</span>
-              <span>+{limit.toPrecision(2)}</span>
+              <span>≥ +{limit.toPrecision(2)}</span>
             </div>
-            <p className="muted">Faded cells are not significant (FDR q = 0.05); the Earth shows through them. Blank cells have no data.</p>
+            <p className="muted">
+              Faded areas are not significant (FDR q = 0.05). Colour fades out towards zero, so clear areas have
+              little or no trend. Soil wetness has no data over the oceans.
+            </p>
             <p className="muted small">
               {map.source} · fetched {map.fetched_at}
             </p>
@@ -181,7 +185,7 @@ export default function App() {
       </section>
 
       <p className="credit">
-        Earth imagery: Blue Marble (NASA Earth Observatory) via three-globe · Borders: Natural Earth via world-atlas
+        Imagery: NASA Blue Marble Next Generation · Stars: three-globe · Borders: Natural Earth
       </p>
     </div>
   );
