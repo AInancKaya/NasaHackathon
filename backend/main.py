@@ -181,6 +181,8 @@ def _slice(s: pd.Series, start: int, end: int) -> pd.Series:
     s = s[(s.index.year >= start) & (s.index.year <= end)]
     if s.notna().sum() < 36:
         raise InsufficientData(f"At least 36 valid months are needed (got {int(s.notna().sum())}).")
+    if s.nunique() == 1:  # e.g. sea ice over land, snow in the tropics: nothing to test
+        raise NoDataError(f"The value never changes here (always {s.dropna().iloc[0]:g}), so there is no trend to test.")
     return s
 
 
@@ -209,6 +211,9 @@ def series(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query(
     start, end = _years(v, start, end)
     s, fetched_at = _power_series(v, lat, lon, box, start, end)
     result = analyze_trend(s, v["name"], v["unit"], _where(lat, lon, box))
+    if not np.isfinite(result["stats"]["mk_p_hr"]):  # Hamed-Rao variance turns negative on some heavily tied records
+        raise InsufficientData("The autocorrelation-corrected significance test cannot be computed for this record "
+                               "(too many identical values, e.g. snow cover that is zero most of the year).")
     return {
         "var": var, "lat": lat, "lon": lon, "box": box,
         "dates": [d.strftime("%Y-%m") for d in s.index],

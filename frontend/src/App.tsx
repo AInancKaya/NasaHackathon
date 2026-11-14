@@ -100,7 +100,7 @@ export default function App() {
         const withMap = all.filter((v) => v.has_map);
         setVars(withMap);
         const wanted = link.current?.varId;
-        setVarId((cur) => cur ?? (withMap.find((v) => v.id === wanted) ?? withMap[0])?.id ?? null);
+        setVarId((cur) => cur || ((withMap.find((v) => v.id === wanted) ?? withMap[0])?.id ?? null));
       })
       .catch((e) => e.name !== "AbortError" && setVarsError(errText(e)));
     getCases(ac.signal)
