@@ -276,6 +276,19 @@ def twin(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query(..
     }
 
 
+class _Frontend(StaticFiles):
+    """index.html is revalidated on every load, so a new build is picked up at once; Vite's hashed
+    files under assets/ never change and can be cached for good."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if path.startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if dist.is_dir():
-    app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
+    app.mount("/", _Frontend(directory=dist, html=True), name="frontend")

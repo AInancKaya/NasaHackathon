@@ -21,8 +21,8 @@
   --div-5: #fddbc7;
   --div-6: #ef8a62;
   --div-7: #b2182b; /* strongest increase */
-  --overlay-alpha: 0.7; /* opacity of the trend colours, so land and coastlines show through */
-  --sig-faded-alpha: 0.28; /* extra fade of non-significant cells, relative to the overlay */
+  --overlay-alpha: 0.82; /* opacity of the trend colours, so land and coastlines show through */
+  --sig-faded-alpha: 0.45; /* opacity of non-significant cells, relative to significant ones */
 
   --font: "Exo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;

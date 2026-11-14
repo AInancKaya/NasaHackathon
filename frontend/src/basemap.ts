@@ -9,7 +9,11 @@ export const EARTH_URL =
   "https://assets.science.nasa.gov/content/dam/science/esd/eo/images/bmng/bmng-topography-bathymetry/december/world.topo.bathy.200412.3x5400x2700.jpg";
 export const EARTH_FALLBACK_URL = "https://unpkg.com/three-globe@2.45.6/example/img/earth-blue-marble.jpg";
 export const BUMP_URL = "https://unpkg.com/three-globe@2.45.6/example/img/earth-topology.png";
-export const SKY_URL = "https://unpkg.com/three-globe@2.45.6/example/img/night-sky.png";
+// Water mask (white = ocean) used as the specular map, so the oceans glint and the land stays matte.
+export const WATER_URL = "https://unpkg.com/three-globe@2.45.6/example/img/earth-water.png";
+/** Footer credit for everything the globe draws (the UI renders it). */
+export const GLOBE_CREDIT =
+  "Imagery: NASA Blue Marble Next Generation · Relief, water mask and starfield: three-globe · Bright stars and Milky Way: Yale Bright Star Catalogue via d3-celestial · Borders: Natural Earth";
 const ATLAS_URL = "https://cdn.jsdelivr.net/npm/world-atlas@2.0.2/countries-50m.json";
 
 interface Lines {
