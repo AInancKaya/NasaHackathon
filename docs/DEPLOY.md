@@ -2,7 +2,7 @@
 # Deploying TerraVestige
 
 TerraVestige runs as one Docker container: the FastAPI backend serves the built React app from
-`frontend/dist` on port 7860. The same image runs locally and on a Hugging Face Space.
+`frontend/dist` on port 7860. The same image runs locally and on Google Cloud Run.
 
 ## 1. Local check (Docker)
 
@@ -21,56 +21,59 @@ curl -s -o /dev/null -w "%{http_code}\n" http://localhost:7860/
 Open http://localhost:7860/ in a browser. The first trend-map request takes about 30 s and peaks
 at about 300 MB of RAM (it fetches live NASA POWER data).
 
-## 2. Create the Hugging Face Space (user step)
+## 2. Deploy to Google Cloud Run (user step)
 
-Done by the project author. No token is entered by Claude.
+Done by the project author in Google Cloud Shell or a local `gcloud` install. Claude does not
+enter credentials or payment details.
 
-1. Log in at https://huggingface.co and create a new Space: **Docker** SDK, **Public**, no login.
-2. In the Space repository, make sure the top of `README.md` contains this YAML front matter:
-
-   ```yaml
-   ---
-   title: TerraVestige
-   emoji: 🌍
-   colorFrom: blue
-   colorTo: green
-   sdk: docker
-   app_port: 7860
-   pinned: false
-   ---
-   ```
-
-3. Create an access token at https://huggingface.co/settings/tokens (role: *write*). Keep it private.
-4. Push this repository to the Space. Replace `<owner>/<space>` and enter the token when git asks
-   for a password (or let your git credential helper store it):
+1. Create a project, link a billing account, and enable the APIs:
 
    ```bash
-   git remote add space https://huggingface.co/spaces/<owner>/<space>
-   git push space main
+   gcloud config set project <PROJECT_ID>
+   gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com
    ```
 
-5. Wait for the build in the Space's **Logs** tab. When the status is *Running*, open
-   `https://<owner>-<space>.hf.space/` and check `https://<owner>-<space>.hf.space/api/variables`.
+2. Deploy from the folder that holds the Dockerfile. The container listens on 7860, so set `--port`:
 
-The container runs as uid 1000, and `/app/cache` is owned by that user, so the disk cache works.
+   ```bash
+   gcloud run deploy trend-detective --source . --region europe-west1 --port 7860 --memory 1Gi --allow-unauthenticated
+   ```
+
+3. The command prints a `Service URL`. Check it: `<service-url>/api/variables` must return HTTP 200.
+
+The container runs as uid 1000, and `/app/cache` is owned by that user. Cloud Run's disk is not
+persistent, so the cache is rebuilt after each new instance starts; every value is still fetched live.
+
+### Custom domain (optional)
+
+Map a subdomain to the service, then add the DNS record the command prints at the DNS host:
+
+```bash
+gcloud domains verify <root-domain>
+gcloud beta run domain-mappings create --service trend-detective --domain <subdomain.root-domain> --region europe-west1
+gcloud beta run domain-mappings describe --domain <subdomain.root-domain> --region europe-west1
+```
+
+The certificate is issued automatically after the DNS record resolves. Check with
+`--format='value(status.conditions)'`; it is ready when `CertificateProvisioned` is `True`.
 
 ## 3. Keep-alive
 
-`.github/workflows/keep-alive.yml` pings `/api/variables` every 4 hours, so the Space does not sleep.
+`.github/workflows/keep-alive.yml` pings `/api/variables` every 4 hours to reduce cold starts.
 
 1. In GitHub: **Settings → Secrets and variables → Actions → Variables → New repository variable**.
-2. Name: `SPACE_URL`. Value: `https://<owner>-<space>.hf.space` (no trailing path).
+2. Name: `APP_URL`. Value: the public app URL, e.g. `https://app.terravestige.earth` (no trailing path).
 3. Run it once from **Actions → keep-alive → Run workflow** to confirm it returns `HTTP 200`.
 
-## 4. FortiGuard reclassification (user step, after the Space URL is live)
+## 4. FortiGuard reclassification (user step, after the app URL is live)
 
 Some school and corporate networks block TerraVestige because FortiGuard has it in the wrong
 category. Ask FortiGuard to re-rate the site. Claude does not submit this form.
 
-1. Check the current rating at https://www.fortiguard.com/webfilter (enter the Space URL).
+1. Check the current rating at https://www.fortiguard.com/webfilter (enter the app URL).
 2. Open the rating-submission form (FAQ and form: https://www.fortiguard.com/faq/wfratingsubmit).
    Verify the form URL in the browser before you use it.
-3. Enter the Space URL, suggest a category that fits an educational or science site
+3. Enter the app URL, suggest a category that fits an educational or science site
    (for example *Education* or *Science and Technology*), and add a short description.
    Use your own name and email only in the form, not in this repository.
 4. Submit, then note the date. Reviews can take several days. Re-check the rating at the lookup page.
