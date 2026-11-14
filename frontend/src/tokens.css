@@ -1,0 +1,31 @@
+/* AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
+   Reviewed and directed by the project author. */
+
+/* Design language (fixed): dark space theme, one accent (violet), and a colour-blind-safe
+   diverging scale (ColorBrewer RdBu, 7 classes) for trend slope: blue = falling, red = rising.
+   The accent is deliberately outside the blue-red range so it never reads as data. */
+:root {
+  --bg: #0b0b10;
+  --surface: rgb(20 21 30 / 0.82);
+  --surface-solid: #14151e;
+  --border: #262838;
+  --text: #f1f5f9;
+  --text-muted: #9aa3b5; /* 7.5:1 on --bg */
+  --accent: #a78bfa; /* the single accent: focus, selection, atmosphere */
+  --error: #fca5a5;
+
+  --div-1: #2166ac; /* strongest decrease */
+  --div-2: #67a9cf;
+  --div-3: #d1e5f0;
+  --div-4: #f7f7f7; /* zero */
+  --div-5: #fddbc7;
+  --div-6: #ef8a62;
+  --div-7: #b2182b; /* strongest increase */
+  --sig-faded-alpha: 0.28; /* opacity of non-significant cells */
+
+  --font: "Exo", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --radius: 12px;
+  --gap: 12px;
+  --gutter: 16px;
+}
