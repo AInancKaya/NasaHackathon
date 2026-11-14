@@ -45,8 +45,10 @@ city or click anywhere to open a case file with:
   to be to detect it (Weatherhead et al., 1998).
 
 Six guided case tours (Arctic warming, Barents Sea ice, the Antarctic Peninsula pause, Mediterranean
-drought, the Sahel's rain and the US Southwest's soil moisture) each link to a peer-reviewed paper and
-recompute its claim from live data. A three-question guide suggests a variable for a student's own
+drought, the Sahel's rain and the US Southwest's soil moisture) each cite a peer-reviewed paper and set its
+finding next to the live 1981–2025 result, with an "Agrees" or "Differs" badge. Five of six agree. The
+Mediterranean differs, and the app explains why: the paper studied the 20th century, and a different
+period can change the answer. A three-question guide suggests a variable for a student's own
 town, and a glossary and method panel explain every term.
 
 **How it works.** A FastAPI backend reads NASA POWER directly: the MERRA-2 monthly Zarr store on the AWS
@@ -96,4 +98,7 @@ statistics on live NASA data.
 - Weatherhead et al. (1998), years to detect a trend. https://doi.org/10.1029/98JD00995
 - Rantanen et al. (2022), Arctic amplification. https://doi.org/10.1038/s43247-022-00498-3
 - Stroeve & Notz (2018), Arctic sea ice. https://doi.org/10.1088/1748-9326/aade56
-- Turner et al. (2016), Antarctic Peninsula: see the case tour in the app for the full reference.
+- Turner et al. (2016), Antarctic Peninsula. https://doi.org/10.1038/nature18645
+- Hoerling et al. (2012), Mediterranean drought. https://doi.org/10.1175/JCLI-D-11-00296.1
+- Biasutti (2019), Sahel rainfall. https://doi.org/10.1002/wcc.591
+- Williams et al. (2020), North American megadrought. https://doi.org/10.1126/science.aaz9600
