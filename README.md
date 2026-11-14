@@ -1,13 +1,3 @@
----
-title: TerraVestige
-emoji: 🌍
-colorFrom: blue
-colorTo: green
-sdk: docker
-app_port: 7860
-pinned: false
----
-
 <!-- AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant. Reviewed and directed by the project author. -->
 
 # TerraVestige — Be an Earth System Trend Detective
@@ -15,8 +5,6 @@ pinned: false
 *Terra* (Earth) + *vestige* (a trace left behind): reading the traces of change that the Earth leaves in its data.
 
 **NASA Space Apps Challenge 2026** · Challenge: *Be An Earth System Trend Detective!*
-
-**English** · [Türkçe](#türkçe)
 
 ---
 
@@ -124,112 +112,3 @@ System of Units (SI) or are shown explicitly next to every value.
 
 NASA POWER Project, NASA Earth science data, Copernicus Climate Change Service (ERA5), Open-Meteo, and the
 open-source libraries listed above.
-
----
-
-## Türkçe
-
-### TerraVestige nedir?
-
-Aynı Dünya değişkeni bir yerde artarken başka bir yerde azalabilir. TerraVestige bunu 3D bir küre üzerinde gösterir.
-Bir değişken seç, gezegenin neresinde arttığını ya da azaldığını gör, herhangi bir noktaya tıkla ve bir "vaka dosyası"
-aç. Dosya sade bir dille neyin değiştiğini, nerede, ne kadar değiştiğini ve değişimin istatistiksel olarak gerçek olup
-olmadığını söyler. Her şey gerçek veriden, anlık hesaplanır. Sentetik ya da depoya gömülü veri yoktur.
-
-### Özellikler
-
-1. **Küresel trend küresi.** Seçilen değişkenin trendine (on yıl başına Sen eğimi) göre renklenen 3D Dünya.
-   Trendi istatistiksel olarak anlamlı olmayan hücreler soluk gösterilir, böylece gürültü sinyal sanılmaz.
-   Haritadaki anlamlılık Benjamini-Hochberg yanlış keşif oranı düzeltmesiyle (q = 0,05) belirlenir.
-2. **Her yer için vaka dosyası.** Küreye tıkla ya da üst çubuktan bir şehir ara (vaka turları tek nokta yerine 10°'ye kadar bir kutunun ortalamasını analiz eder).
-   Aylık seri, mevsimselliği çıkarılmış anomali, %95 güven bandıyla trend çizgisi ve dört cevap kartı gelir:
-   **Ne** değişiyor, **Nerede**, **Ne kadar** ve **Anlamlı mı?**
-3. **Kanıt grafiği.** Veriyi, uydurulan trendi ve güven bandını gösteren etkileşimli grafik.
-4. **İkinci tanık.** Trend, kısmen bağımsız ikinci bir veri setiyle (Open-Meteo üzerinden Copernicus ERA5; farklı bir reanaliz, ama MERRA-2 ile birçok gözlemi paylaşır) yeniden hesaplanır.
-   Bir rozet, iki veri setinin yön konusunda uyuşup uyuşmadığını gösterir. 14 değişkenin 8'inde vardır.
-5. **Zıt ikiz.** Zıt yönde en güçlü anlamlı trende sahip hücreyi bulur ve küreyi oraya uçurur. Görevin ana fikrini
-   karşılar: bir değişken burada artarken orada azalabilir.
-6. **"Kaç yıl daha gerekir?"** Trend henüz anlamlı değilse, trendi yakalamak için kaç yıllık ek veri gerektiğini
-   tahmin eder (Weatherhead ve ark., 1998).
-7. **Dedektif rehberi.** Üç soruluk bir sihirbaz (neyi merak ediyorsun, nerede, ne tür bir yer) değişken önerir.
-   Ayrıca sade bir sözlük ve her değişken için kısa bir tanım ile "neden önemli" açıklaması bulunur.
-8. **Hazır vaka turları.** Altı rehberli inceleme: Arktik ısınması, Arktik deniz buzu, Antarktika Yarımadası'ndaki duraklama, Akdeniz
-   yağışları, Sahel yağmurları, ABD Güneybatısı toprak nemi. Her biri hakemli bir makaleye bağlanır. Turlar yalnızca
-   yer, değişken ve atıf içerir. Bütün sayılar canlı hesaplanır.
-9. **Dürüst hatalar.** Bir veri kaynağı çökerse API açık bir hata döner. Sessizce yedek veri göstermez.
-   Her sonuç, verinin ne zaman çekildiğini (`fetched_at`) gösterir.
-
-### Değişkenler (14)
-
-- **Atmosfer** (NASA POWER / MERRA-2): yüzey hava sıcaklığı, günlük en yüksek ve en düşük sıcaklık, yağış,
-  bağıl nem, rüzgâr hızı, toplam sütun su buharı.
-- **Okyanus ve buz** (NASA POWER / MERRA-2): deniz ve kara yüzey sıcaklığı, deniz buzu örtüsü, kar örtüsü.
-  Okyanus üzerinde MERRA-2'nin deniz yüzeyi sıcaklığı ve deniz buzu uydu tabanlı analizlerden gelir.
-- **Kara ve bitki** (NASA POWER / MERRA-2): yüzey toprak nemi, evapotranspirasyon (topraktan ve bitkilerden
-  havaya geçen su).
-- **Radyasyon ve bulut** (NASA POWER / CERES): yüzey güneş radyasyonu, bulut örtüsü.
-
-12 MERRA-2 değişkeninin küresel trend haritası vardır. 8 değişkende ERA5 ile ikinci tanık kontrolü yapılır.
-NASA POWER'da bitki örtüsü indeksi (NDVI) yoktur; bitkiyle en ilgili büyüklük evapotranspirasyondur.
-
-### Yöntemler
-
-- Mevsimsel Mann-Kendall testi ve Sen eğimi, eğim için %95 güven aralığıyla.
-- p-değerinin otokorelasyon için Hamed-Rao düzeltmesi. "Anlamlı" kararı bu düzeltilmiş p-değerine dayanır.
-- Destekleyici kanıt olarak anomaliler üzerinde OLS regresyonu ve Welch t-testi (ilk yarı ve ikinci yarı).
-- Haritada her hücrenin p-değeri önce lag-1 otokorelasyon için düzeltilir (Hamed-Rao düzeltmesinin lag-1 biçimi),
-  ardından tüm hücrelere Benjamini-Hochberg FDR uygulanır (Wilks, 2016).
-- Ölçek: harita ızgarası yaklaşık 2° (~200 km), vaka dosyası ise ~50 km'lik tek bir model hücresini okur. Değerler
-  reanalizden gelen bölgesel ortalamalardır; bir şehrin kendi ısı adasını göstermez.
-- "Kaç yıl gerekir" tahmini (Weatherhead ve ark., 1998).
-- "Değişimin hızı değişti mi?": yıllık anomalilere sürekli iki parçalı bir doğru uydurulur (her yanda en az 10 yıl)
-  ve en iyi uyan kırılma yılından önceki ve sonraki hız verilir. Keşif amaçlıdır, p-değeri yoktur, çünkü kırılma
-  yılı veriden seçilir. (Pettitt testi kullanılmaz: düzenli her trendde bir "kırılma" bulur.)
-- Vektörel harita uygulaması, test paketinde `pymannkendall` kütüphanesiyle karşılaştırılır.
-- Anlamlılık düzeyi α = 0,05. Eğimler on yıl başınadır. Her sayının yanında birim yazar (SI tabanlı:
-  °C, mm/gün, m/s, kg/m², MJ/m²/gün, % ve oran).
-
-### Veri kaynakları (hepsi canlı, girişsiz)
-
-- **NASA POWER** nokta ve bölgesel API'leri (MERRA-2 ve CERES).
-- Açık AWS kovası `nasa-power` üzerindeki **NASA POWER Zarr** (trend haritaları için küresel ızgara).
-- **Open-Meteo** arşiv API'si üzerinden **Copernicus ERA5** (ikinci tanık).
-
-Yanıtlar, ilk çekim zamanıyla birlikte diske (`cache/`, git'e girmez) önbelleğe alınır. Depoda veri dosyası yoktur.
-
-### Mimari
-
-- **Backend:** Python, FastAPI, xarray + zarr + s3fs, pandas, numpy, scipy, pymannkendall (`backend/`).
-- **Frontend:** React + TypeScript + Vite, globe.gl / three.js, Plotly (`frontend/`).
-- **Dağıtım:** API'yi ve derlenmiş arayüzü 7860 portunda sunan tek Docker konteyneri (Google Cloud Run ile dağıtılabilir).
-  Bkz. [docs/DEPLOY.md](docs/DEPLOY.md).
-- **API sözleşmesi:** [docs/CONTRACT.md](docs/CONTRACT.md).
-
-### Yerelde çalıştırma
-
-```bash
-pip install -r requirements.txt
-cd frontend && npm install && npm run build && cd ..
-uvicorn backend.main:app --port 7860
-# http://localhost:7860 adresini aç
-```
-
-Testler: `pytest`.
-
-### Yapay zeka kullanımı
-
-Bu proje, Claude Code üzerinden kullanılan yapay zeka kodlama asistanı **Claude (Anthropic)** desteğiyle geliştirildi.
-Claude kodun, testlerin ve belgelerin yazılmasına yardım etti. Proje sahibi fikri ve gereksinimleri belirledi, işi
-yönlendirdi ve sonuçları gözden geçirdi. Her kaynak dosyada yapay zeka kullanım bildirimi başlığı bulunur.
-**Ürünün içinde, çalışma anında hiçbir yapay zeka modeli çalışmaz.** Bütün karar metinleri kural tabanlıdır ve bütün
-sayılar canlı veriden ve yukarıdaki istatistik kodundan gelir.
-
-### Marka ve birimler
-
-NASA logosu, amblemi ya da armasının hiçbiri kullanılmamıştır. NASA yalnızca veri kaynağı olarak anılır. Birimler
-Uluslararası Birim Sistemi'ne (SI) uygundur ya da her değerin yanında açıkça yazılıdır.
-
-### Teşekkür
-
-NASA POWER Projesi, NASA Dünya bilimi verileri, Copernicus İklim Değişikliği Servisi (ERA5), Open-Meteo ve yukarıda
-sayılan açık kaynak kütüphaneler.
