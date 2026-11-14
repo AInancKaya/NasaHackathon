@@ -9,6 +9,7 @@ import { IconBook, IconCompass, IconFlask, IconGlobe, IconInfo, IconClose } from
 import Intro from "./Intro";
 import Legend from "./Legend";
 import Method from "./Method";
+import { PlaceName } from "./placeName";
 import VarPicker from "./VarPicker";
 import Wizard from "./Wizard";
 import "./guide.css";
@@ -80,6 +81,7 @@ export default function App() {
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(
     link.current?.lat !== undefined ? { lat: link.current.lat, lon: link.current.lon! } : null,
   );
+  const [place, setPlace] = useState<string | null>(null);
   const [box, setBox] = useState<number | null>(link.current?.box ?? null);
   const [guide, setGuide] = useState<GuideTab | null>(null);
   const [cases, setCases] = useState<Case[] | null>(null);
@@ -148,11 +150,13 @@ export default function App() {
   const onPick = useCallback((lat: number, lon: number) => {
     if (window.matchMedia("(max-width: 600px)").matches) setGuide(null); // one bottom sheet at a time
     setBox(null);
+    setPlace(null);
     setPicked({ lat, lon });
   }, []);
   const onGoto = useCallback((lat: number, lon: number) => {
     globe.current?.flyTo(lat, lon);
     setBox(null);
+    setPlace(null);
     setPicked({ lat, lon });
   }, []);
   const openCase = useCallback((t: CaseTarget | { varId: string; lat: number; lon: number; box?: number | null }) => {
@@ -160,6 +164,7 @@ export default function App() {
     setGuide(null);
     globe.current?.flyTo(t.lat, t.lon);
     setBox(t.box ?? null);
+    setPlace(null);
     setPicked({ lat: t.lat, lon: t.lon });
   }, []);
 
@@ -217,7 +222,13 @@ export default function App() {
             </button>
           </div>
           <VarPicker vars={vars} value={varId} loading={mapLoading} onChange={setVarId} />
-          <CitySearch ref={search} onPlace={(p) => openCase({ varId: varId ?? "", lat: p.lat, lon: p.lon })} />
+          <CitySearch
+            ref={search}
+            onPlace={(p) => {
+              openCase({ varId: varId ?? "", lat: p.lat, lon: p.lon });
+              setPlace(p.label);
+            }}
+          />
           <nav className="tabs" aria-label="Help and tours">
             {TABS.map((t) => (
               <button
@@ -265,14 +276,16 @@ export default function App() {
 
       {picked && current && (
         <Suspense fallback={<section className="panel casefile muted">Opening the case file…</section>}>
-          <CaseFile
-            variable={current}
-            lat={picked.lat}
-            lon={picked.lon}
-            box={box}
-            onGoto={onGoto}
-            onClose={() => setPicked(null)}
-          />
+          <PlaceName.Provider value={place}>
+            <CaseFile
+              variable={current}
+              lat={picked.lat}
+              lon={picked.lon}
+              box={box}
+              onGoto={onGoto}
+              onClose={() => setPicked(null)}
+            />
+          </PlaceName.Provider>
         </Suspense>
       )}
 

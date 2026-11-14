@@ -1,6 +1,7 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
 import { forwardRef, useEffect, useState } from "react";
+import { ApiError } from "./api";
 import { geocode, type Place } from "./geocode";
 import { IconLocate, IconSearch } from "./icons";
 
@@ -35,7 +36,11 @@ const CitySearch = forwardRef<HTMLInputElement, Props>(function CitySearch({ onP
         .catch((e) => {
           if (e.name === "AbortError") return;
           setFound(null);
-          setMsg("Place search is unavailable right now. Click the globe instead.");
+          setMsg(
+            e instanceof ApiError
+              ? `Place search failed. ${e.detail} Click the globe instead.`
+              : "Place search is unavailable right now. Click the globe instead.",
+          );
         })
         .finally(() => !ac.signal.aborted && setBusy(false));
     }, 300);

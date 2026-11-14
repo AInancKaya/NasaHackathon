@@ -186,3 +186,25 @@ Case {
   citation_url: str
 }
 ```
+
+## `GET /api/geocode`
+
+Added after S0 (announced addition; no existing field changed). Place-name search through the
+Open-Meteo geocoding API, so a user can find a town by name. Not a data endpoint: no numbers.
+
+Query: `q: str` (place name, 1 to 100 characters).
+
+Response: `Place[]`, up to 5 entries, best match first.
+
+```
+Place {
+  name: str
+  country: str | null
+  admin1: str | null      // region or state, when known
+  lat: float
+  lon: float
+}
+```
+
+Errors: 400 `bad_request` for a missing or empty `q`; 404 `not_found` when no place matches;
+502 `upstream_error` when the geocoding service fails.

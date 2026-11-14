@@ -101,6 +101,14 @@ export interface Case {
   citation_url: string;
 }
 
+export interface GeoPlace {
+  name: string;
+  country: string | null;
+  admin1: string | null;
+  lat: number;
+  lon: number;
+}
+
 /** Error body of any non-2xx response: { error, detail }. */
 export class ApiError extends Error {
   constructor(public error: string, public detail: string) {
@@ -145,3 +153,5 @@ export const getWitness = (v: string, lat: number, lon: number, signal?: AbortSi
 export const getTwin = (v: string, lat: number, lon: number, signal?: AbortSignal) =>
   get<Twin>(`/api/twin?${q(v, lat, lon)}`, signal);
 export const getCases = (signal?: AbortSignal) => get<Case[]>("/api/cases", signal);
+export const getGeocode = (name: string, signal?: AbortSignal) =>
+  get<GeoPlace[]>(`/api/geocode?q=${encodeURIComponent(name)}`, signal);

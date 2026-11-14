@@ -19,7 +19,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.cache import cached_blob
 from backend.catalog import BY_ID, ERA5_DAILY, VARIABLES
-from backend.sources import NoDataError, UpstreamError, era5, power_grid, power_point, power_region
+from backend.sources import NoDataError, UpstreamError, era5, geocode, power_grid, power_point, power_region
 from backend.stats.field import trend_field
 from backend.stats.trend import analyze_trend
 
@@ -131,6 +131,14 @@ def variables():
 @app.get("/api/cases")
 def cases():
     return CASES
+
+
+@app.get("/api/geocode")
+def geocode_place(q: str = Query(..., min_length=1, max_length=100)):
+    query = q.strip()
+    if not query:
+        raise BadRequest("q must not be empty.")
+    return geocode.search(query)
 
 
 def _variable(var: str, need: str | None = None) -> dict:
