@@ -35,10 +35,10 @@ export default function EvidenceChart({
       tickfont: { color: muted, size: 11 }, ticks: "outside" as const, tickcolor: grid, ticklen: 4,
     };
     const traces = other ? [
-      { x: d, y: series.anomaly, mode: "lines", line: { color: token("--cmp-a"), width: 1 }, name: `${label} anomaly`, opacity: 0.55, connectgaps: false },
-      { x: other.series.dates, y: other.series.anomaly, mode: "lines", line: { color: token("--cmp-b"), width: 1 }, name: `${other.label} anomaly`, opacity: 0.55, connectgaps: false },
-      { x: d, y: anomalyTrend(series), mode: "lines", line: { color: token("--cmp-a"), width: 3 }, name: `${label} trend` },
-      { x: other.series.dates, y: anomalyTrend(other.series), mode: "lines", line: { color: token("--cmp-b"), width: 3 }, name: `${other.label} trend` },
+      { x: d, y: series.anomaly, mode: "lines", line: { color: token("--cmp-b"), width: 1 }, name: `${label} anomaly`, opacity: 0.55, connectgaps: false },
+      { x: other.series.dates, y: other.series.anomaly, mode: "lines", line: { color: token("--cmp-a"), width: 1 }, name: `${other.label} anomaly`, opacity: 0.55, connectgaps: false },
+      { x: d, y: anomalyTrend(series), mode: "lines", line: { color: token("--cmp-b"), width: 3 }, name: `${label} trend` },
+      { x: other.series.dates, y: anomalyTrend(other.series), mode: "lines", line: { color: token("--cmp-a"), width: 3 }, name: `${other.label} trend` },
     ] as Plotly.Data[] : [
       { x: d, y: series.lo, mode: "lines", line: { width: 0 }, hoverinfo: "skip", showlegend: false },
       {
