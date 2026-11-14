@@ -14,6 +14,8 @@
   --accent: #a78bfa; /* the single accent: focus, selection, atmosphere */
   --error: #fca5a5;
 
+  --cmp-a: #e69f00; /* comparison: origin (Okabe-Ito orange) */
+  --cmp-b: #56b4e9; /* comparison: twin (Okabe-Ito sky blue) */
   --div-1: #2166ac; /* strongest decrease */
   --div-2: #67a9cf;
   --div-3: #d1e5f0;
