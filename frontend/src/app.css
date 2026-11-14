@@ -211,22 +211,21 @@ p {
   gap: var(--gap);
   color: var(--text-muted);
 }
-/* Headline verdict: the number first, its meaning beside it. The stripe uses the data colours
+/* Headline verdict: the number first, its meaning beside it. The tint uses the data colours
    (red = rising, blue = falling), the same as on the globe. */
 .headline {
   margin-top: 16px;
   padding: 14px 16px;
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--div-7);
+  border: 1px solid color-mix(in srgb, var(--div-7) 45%, var(--border));
   border-radius: var(--radius);
   background: linear-gradient(90deg, rgb(178 24 43 / 0.16), transparent 70%);
 }
 .headline.down {
-  border-left-color: var(--div-1);
+  border-color: color-mix(in srgb, var(--div-1) 55%, var(--border));
   background: linear-gradient(90deg, rgb(33 102 172 / 0.2), transparent 70%);
 }
 .headline.flat {
-  border-left-color: var(--text-muted);
+  border-color: var(--border);
   background: rgb(255 255 255 / 0.03);
 }
 .headline-value {
