@@ -2,6 +2,7 @@
 // Reviewed and directed by the project author.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getTrendMap, getVariables, type TrendMap, type Variable } from "./api";
+import CaseFile from "./CaseFile";
 import Globe, { type GlobeHandle } from "./Globe";
 
 function errText(e: unknown): string {
@@ -9,7 +10,7 @@ function errText(e: unknown): string {
 }
 
 export default function App() {
-  const globe = useRef<GlobeHandle>(null); // S4 will call globe.current.flyTo(lat, lon)
+  const globe = useRef<GlobeHandle>(null); 
   const [vars, setVars] = useState<Variable[] | null>(null);
   const [varsError, setVarsError] = useState<string | null>(null);
   const [varId, setVarId] = useState<string | null>(null);
@@ -51,6 +52,10 @@ export default function App() {
   }, [varId]);
 
   const onPick = useCallback((lat: number, lon: number) => setPicked({ lat, lon }), []);
+  const onGoto = useCallback((lat: number, lon: number) => {
+    globe.current?.flyTo(lat, lon);
+    setPicked({ lat, lon });
+  }, []);
   const current = vars?.find((v) => v.id === varId);
   const error = varsError ?? mapError;
 
@@ -71,13 +76,8 @@ export default function App() {
         {current && <p className="muted">{current.description}</p>}
       </header>
 
-      {picked && (
-        <aside className="panel pick" aria-live="polite">
-          <span className="muted">Selected point</span>
-          <strong className="mono">
-            {picked.lat.toFixed(2)}°, {picked.lon.toFixed(2)}°
-          </strong>
-        </aside>
+      {picked && current && (
+        <CaseFile variable={current} lat={picked.lat} lon={picked.lon} onGoto={onGoto} onClose={() => setPicked(null)} />
       )}
 
       <section className="panel legend" aria-label="Legend">
