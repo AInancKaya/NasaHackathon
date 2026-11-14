@@ -50,3 +50,18 @@ def cached_grid(key: str, fetch) -> tuple[dict, str]:
     CACHE_DIR.mkdir(exist_ok=True)
     np.savez_compressed(path, fetched_at=fetched_at, **grid)
     return grid, fetched_at
+
+
+def cached_blob(key: str, compute, newer_than: str | None = None) -> bytes:
+    """Return computed bytes (e.g. a serialised API response) from disk, or compute() and store them.
+
+    The entry is stale after MAX_AGE_S, or when the raw cache file `newer_than` was rewritten after it.
+    """
+    path = CACHE_DIR / key
+    if _fresh(path) and not (newer_than and (CACHE_DIR / newer_than).exists()
+                             and (CACHE_DIR / newer_than).stat().st_mtime > path.stat().st_mtime):
+        return path.read_bytes()
+    blob = compute()
+    CACHE_DIR.mkdir(exist_ok=True)
+    path.write_bytes(blob)
+    return blob

@@ -1,13 +1,15 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
-import { useCallback, useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getTrendMap, getVariables, type TrendMap, type Variable } from "./api";
-import CaseFile from "./CaseFile";
 import CaseTours from "./CaseTours";
 import Glossary from "./Glossary";
 import Wizard from "./Wizard";
 import "./guide.css";
 import Globe, { type GlobeHandle } from "./Globe";
+
+// The case file pulls in Plotly (a few MB): load it only when someone opens a case.
+const CaseFile = lazy(() => import("./CaseFile"));
 
 function errText(e: unknown): string {
   return e instanceof ApiError ? `${e.error}: ${e.detail}` : "Unexpected error.";
@@ -87,6 +89,24 @@ export default function App() {
     <div className="app">
       <Globe ref={globe} map={map} picked={picked} onPick={onPick} onLimit={setLimit} />
 
+      {!picked && (
+        <div className="hero">
+          <h2>Where is Earth changing, and where is it changing the opposite way?</h2>
+          <p>
+            Red = rising, blue = falling. Faded = not significant. <strong>Click anywhere</strong> to open its case
+            file.
+          </p>
+        </div>
+      )}
+
+      {(loading || !vars) && !error && (
+        <div className="loading" role="status">
+          <div className="spinner" aria-hidden="true" />
+          Loading the trend map…
+          <span>The first load can take up to 30 s while NASA data is read. Later loads are instant.</span>
+        </div>
+      )}
+
       <div className="leftcol">
       <header className="panel top">
         <h1>TerraTrend</h1>
@@ -129,7 +149,9 @@ export default function App() {
       </div>
 
       {picked && current && (
-        <CaseFile variable={current} lat={picked.lat} lon={picked.lon} box={box} onGoto={onGoto} onClose={() => setPicked(null)} />
+        <Suspense fallback={<section className="panel casefile muted">Opening the case file…</section>}>
+          <CaseFile variable={current} lat={picked.lat} lon={picked.lon} box={box} onGoto={onGoto} onClose={() => setPicked(null)} />
+        </Suspense>
       )}
 
       <section className="panel legend" aria-label="Legend">
@@ -138,9 +160,7 @@ export default function App() {
             {error}
           </p>
         ) : loading || !vars ? (
-          <p role="status" className="muted">
-            Loading trend map… the first request for a variable can take about 30 s while data is read.
-          </p>
+          <p className="muted">Trend legend appears when the map has loaded.</p>
         ) : map ? (
           <>
             <div className="legend-title">
@@ -152,13 +172,17 @@ export default function App() {
               <span>0</span>
               <span>+{limit.toPrecision(2)}</span>
             </div>
-            <p className="muted">Faded cells are not significant (FDR q = 0.05). Blank cells have no data.</p>
+            <p className="muted">Faded cells are not significant (FDR q = 0.05); the Earth shows through them. Blank cells have no data.</p>
             <p className="muted small">
               {map.source} · fetched {map.fetched_at}
             </p>
           </>
         ) : null}
       </section>
+
+      <p className="credit">
+        Earth imagery: Blue Marble (NASA Earth Observatory) via three-globe · Borders: Natural Earth via world-atlas
+      </p>
     </div>
   );
 }
