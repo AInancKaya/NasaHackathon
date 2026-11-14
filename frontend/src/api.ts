@@ -138,9 +138,10 @@ export const getTrendMap = (v: string, signal?: AbortSignal) =>
 
 const q = (v: string, lat: number, lon: number) =>
   `var=${encodeURIComponent(v)}&lat=${lat.toFixed(4)}&lon=${lon.toFixed(4)}`;
-export const getSeries = (v: string, lat: number, lon: number, signal?: AbortSignal) =>
-  get<Series>(`/api/series?${q(v, lat, lon)}`, signal);
+export const getSeries = (v: string, lat: number, lon: number, signal?: AbortSignal, box?: number | null) =>
+  get<Series>(`/api/series?${q(v, lat, lon)}${box ? `&box=${box}` : ""}`, signal);
 export const getWitness = (v: string, lat: number, lon: number, signal?: AbortSignal) =>
   get<Witness>(`/api/witness?${q(v, lat, lon)}`, signal);
 export const getTwin = (v: string, lat: number, lon: number, signal?: AbortSignal) =>
   get<Twin>(`/api/twin?${q(v, lat, lon)}`, signal);
+export const getCases = (signal?: AbortSignal) => get<Case[]>("/api/cases", signal);

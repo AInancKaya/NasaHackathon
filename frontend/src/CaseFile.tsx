@@ -11,11 +11,12 @@ interface Props {
   variable: Variable;
   lat: number;
   lon: number;
+  box?: number | null; // set by case tours: analyse the box mean instead of one point
   onClose: () => void;
   onGoto: (lat: number, lon: number) => void;
 }
 
-export default function CaseFile({ variable, lat, lon, onClose, onGoto }: Props) {
+export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: Props) {
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [witness, setWitness] = useState<Witness | null>(null);
@@ -32,10 +33,10 @@ export default function CaseFile({ variable, lat, lon, onClose, onGoto }: Props)
     setWitnessError(null);
     setTwinMsg(null);
     const fail = (set: (m: string) => void) => (e: Error) => e.name !== "AbortError" && set(errText(e));
-    getSeries(id, lat, lon, ac.signal).then(setSeries).catch(fail(setError));
+    getSeries(id, lat, lon, ac.signal, box).then(setSeries).catch(fail(setError));
     if (variable.has_witness) getWitness(id, lat, lon, ac.signal).then(setWitness).catch(fail(setWitnessError));
     return () => ac.abort();
-  }, [id, lat, lon, variable.has_witness]);
+  }, [id, lat, lon, box, variable.has_witness]);
 
   async function findTwin() {
     setTwinBusy(true);
