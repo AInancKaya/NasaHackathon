@@ -1,8 +1,11 @@
-streamlit
+fastapi
+uvicorn
+xarray
+zarr
+s3fs
+requests
 pandas
 numpy
 scipy
 pymannkendall
-plotly
-requests
 pytest
