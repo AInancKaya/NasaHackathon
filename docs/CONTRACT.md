@@ -93,6 +93,12 @@ Response:
     ttest_p: float
     years_to_detect: float | null  // Weatherhead (1998) years needed to detect the trend;
                                    // null when already significant
+    segments: {                    // announced addition: exploratory change-of-pace check on annual
+      break_year: int              // anomalies (continuous two-segment fit, >= 10 years per side);
+      before_per_decade: float     // null when the record is shorter than 21 years.
+      after_per_decade: float      // No p-value: the break year is chosen from the data.
+      fit_gain: float              // share of the straight line's residual variance removed (0..1)
+    } | null
   }
   verdict: {
     what: str                  // "What is changing?"

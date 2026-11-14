@@ -15,16 +15,21 @@ function hexToRgb(hex: string): RGB {
 
 /** Water variables use a brown-to-teal scale (ColorBrewer BrBG: brown = drier, teal = wetter), because
  *  red for "more rain" reads backwards. Set as data-palette on <html>; tokens.css swaps --div-1 … --div-7. */
-const WET = new Set(["prectotcorr", "gwettop", "rh2m", "tqv"]);
+const WET = new Set(["prectotcorr", "gwettop", "rh2m", "tqv", "evptrns"]);
+/** Ice and snow use ColorBrewer PuOr: orange = losing cover, purple = gaining cover. */
+const ICE = new Set(["frseaice", "frsno"]);
 
-export function paletteFor(varId: string | null | undefined): "wet" | "heat" {
-  return varId && WET.has(varId) ? "wet" : "heat";
+export function paletteFor(varId: string | null | undefined): "wet" | "ice" | "heat" {
+  if (varId && WET.has(varId)) return "wet";
+  if (varId && ICE.has(varId)) return "ice";
+  return "heat";
 }
 
 /** Colour words for text that names the scale. */
 export const PALETTE_WORDS = {
   heat: { down: "blue", up: "red" },
   wet: { down: "brown", up: "teal" },
+  ice: { down: "orange", up: "purple" },
 } as const;
 
 /** The 7 diverging stops from the CSS tokens (--div-1 … --div-7). */

@@ -32,6 +32,7 @@ export interface SeriesStats {
   ttest_t: number;
   ttest_p: number;
   years_to_detect: number | null;
+  segments: { break_year: number; before_per_decade: number; after_per_decade: number; fit_gain: number } | null;
 }
 
 export interface Series {

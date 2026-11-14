@@ -45,3 +45,14 @@
   --div-6: #5ab4ac;
   --div-7: #01665e;
 }
+
+/* Ice and snow cover: ColorBrewer PuOr, 7 classes, orange = losing cover (falling), purple = gaining. */
+:root[data-palette="ice"] {
+  --div-1: #b35806;
+  --div-2: #f1a340;
+  --div-3: #fee0b6;
+  --div-4: #f7f7f7;
+  --div-5: #d8daeb;
+  --div-6: #998ec3;
+  --div-7: #542788;
+}
