@@ -521,3 +521,29 @@ p {
     top: 55%;
   }
 }
+
+/* Twin comparison: two places side by side, colours distinct from the red/blue data scale. */
+.cmp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--gap);
+  margin-bottom: 10px;
+}
+.cmp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 0.03);
+}
+.cmp-place {
+  overflow-wrap: anywhere;
+}
+.cmp-card .num {
+  font-size: 28px;
+  font-weight: 700;
+  line-height: 1.1;
+}

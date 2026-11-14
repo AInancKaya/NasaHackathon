@@ -2,7 +2,7 @@
 // Reviewed and directed by the project author.
 import { useEffect, useRef, useState } from "react";
 import { ApiError, getSeries, getTwin, getWitness, type Series, type Variable, type Witness } from "./api";
-import EvidenceChart from "./EvidenceChart";
+import EvidenceChart, { type Compare } from "./EvidenceChart";
 import { IconCheck, IconClose, IconShare } from "./icons";
 import { fmtFetched } from "./varmeta";
 import VerdictCards from "./VerdictCards";
@@ -46,7 +46,10 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
   const [twinBusy, setTwinBusy] = useState(false);
   const [shared, setShared] = useState<"copied" | "manual" | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Origin of a twin flight: kept while the case file shows the twin it flew to.
+  const [origin, setOrigin] = useState<{ varId: string; twin: { lat: number; lon: number }; series: Series; label: string } | null>(null);
   const id = variable.id;
+  const cmp = origin && origin.varId === id && origin.twin.lat === lat && origin.twin.lon === lon ? origin : null;
   const link = caseUrl(id, lat, lon, box);
 
   useEffect(() => {
@@ -108,7 +111,15 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
     setTwinMsg(null);
     try {
       const t = await getTwin(id, lat, lon);
-      if (t.twin) onGoto(t.twin.lat, t.twin.lon);
+      if (t.twin) {
+        if (series) {
+          setOrigin({
+            varId: id, twin: t.twin, series,
+            label: box ? `${box}° box around ${place(lat, lon)}` : place(lat, lon),
+          });
+        }
+        onGoto(t.twin.lat, t.twin.lon);
+      }
       else setTwinMsg("No opposite twin exists: no cell on the map has a significant trend in the opposite direction.");
     } catch (e) {
       setTwinMsg(errText(e));
@@ -190,8 +201,38 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
 
           <section className="cf-block" aria-label="Evidence chart">
             <h3 className="cf-h">The evidence</h3>
-            <EvidenceChart series={series} unit={variable.unit} />
+            <EvidenceChart
+              series={series}
+              unit={variable.unit}
+              label={cmp ? place(lat, lon) : undefined}
+              other={cmp ? ({ series: cmp.series, label: cmp.label } satisfies Compare) : undefined}
+            />
           </section>
+
+          {cmp && (
+            <section className="cf-block compare" aria-label="Twin comparison">
+              <h3 className="cf-h">Opposite twins</h3>
+              <div className="cmp-grid">
+                {[
+                  { label: cmp.label, s: cmp.series, c: "var(--cmp-a)" },
+                  { label: place(lat, lon), s: series, c: "var(--cmp-b)" },
+                ].map((x) => (
+                  <div className="cmp-card" key={x.c} style={{ borderColor: x.c }}>
+                    <span className="cmp-place mono small" style={{ color: x.c }}>
+                      {x.c === "var(--cmp-a)" ? "Origin" : "Twin"} · {x.label}
+                    </span>
+                    <span className="num mono">{signed(x.s.stats.sen_per_decade)}</span>
+                    <span className="muted small">
+                      {variable.unit} per decade · {x.s.verdict.significant ? "significant" : "not significant"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <button className="btn" onClick={() => setOrigin(null)}>
+                Clear comparison
+              </button>
+            </section>
+          )}
 
           <VerdictCards series={series} unit={variable.unit} />
           <p className="muted small">
