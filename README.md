@@ -1,5 +1,5 @@
 ---
-title: TerraTrend
+title: AeroVestige
 emoji: 🌍
 colorFrom: blue
 colorTo: green
@@ -10,7 +10,7 @@ pinned: false
 
 <!-- AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant. Reviewed and directed by the project author. -->
 
-# TerraTrend 🌍 — Be an Earth System Trend Detective
+# AeroVestige 🌍 — Be an Earth System Trend Detective
 
 **NASA Space Apps Challenge 2026** · Challenge: *Be An Earth System Trend Detective!*
 
@@ -20,9 +20,9 @@ pinned: false
 
 ## English
 
-### What is TerraTrend?
+### What is AeroVestige?
 
-The same Earth variable can rise in one place and fall in another. TerraTrend shows this on a 3D globe.
+The same Earth variable can rise in one place and fall in another. AeroVestige shows this on a 3D globe.
 Pick a variable, see where it is rising or falling across the whole planet, click any spot, and open a
 "case file" that tells you, in plain words, what is changing, where, by how much, and whether the change
 is statistically real. Everything is computed live from real data. There is no synthetic or bundled data.
@@ -32,7 +32,7 @@ is statistically real. Everything is computed live from real data. There is no s
 1. **Global trend globe.** A 3D Earth coloured by the trend of the chosen variable (Sen's slope per decade).
    Cells whose trend is not statistically significant are faded, so noise is not mistaken for signal.
    Significance on the map uses Benjamini-Hochberg false-discovery-rate correction (q = 0.05).
-2. **Case file for any place.** Click the globe (the case tours analyse a box average, up to 10° wide, instead of one point). You get the monthly series, the seasonality-free anomaly, a trend line with a 95% confidence band,
+2. **Case file for any place.** Click the globe or search for a city in the top bar (the case tours analyse a box average, up to 10° wide, instead of one point). You get the monthly series, the seasonality-free anomaly, a trend line with a 95% confidence band,
    and four answer cards: **What** is changing, **Where**, **How much**, and **Is it significant?**
 3. **Evidence chart.** An interactive chart of the data, the fitted trend and its confidence band.
 4. **Second witness.** The trend is re-computed from an independent dataset (Copernicus ERA5 through Open-Meteo)
@@ -115,9 +115,9 @@ open-source libraries listed above.
 
 ## Türkçe
 
-### TerraTrend nedir?
+### AeroVestige nedir?
 
-Aynı Dünya değişkeni bir yerde artarken başka bir yerde azalabilir. TerraTrend bunu 3D bir küre üzerinde gösterir.
+Aynı Dünya değişkeni bir yerde artarken başka bir yerde azalabilir. AeroVestige bunu 3D bir küre üzerinde gösterir.
 Bir değişken seç, gezegenin neresinde arttığını ya da azaldığını gör, herhangi bir noktaya tıkla ve bir "vaka dosyası"
 aç. Dosya sade bir dille neyin değiştiğini, nerede, ne kadar değiştiğini ve değişimin istatistiksel olarak gerçek olup
 olmadığını söyler. Her şey gerçek veriden, anlık hesaplanır. Sentetik ya da depoya gömülü veri yoktur.
@@ -127,7 +127,7 @@ olmadığını söyler. Her şey gerçek veriden, anlık hesaplanır. Sentetik y
 1. **Küresel trend küresi.** Seçilen değişkenin trendine (on yıl başına Sen eğimi) göre renklenen 3D Dünya.
    Trendi istatistiksel olarak anlamlı olmayan hücreler soluk gösterilir, böylece gürültü sinyal sanılmaz.
    Haritadaki anlamlılık Benjamini-Hochberg yanlış keşif oranı düzeltmesiyle (q = 0,05) belirlenir.
-2. **Her yer için vaka dosyası.** Küreye tıkla (vaka turları tek nokta yerine 10°'ye kadar bir kutunun ortalamasını analiz eder).
+2. **Her yer için vaka dosyası.** Küreye tıkla ya da üst çubuktan bir şehir ara (vaka turları tek nokta yerine 10°'ye kadar bir kutunun ortalamasını analiz eder).
    Aylık seri, mevsimselliği çıkarılmış anomali, %95 güven bandıyla trend çizgisi ve dört cevap kartı gelir:
    **Ne** değişiyor, **Nerede**, **Ne kadar** ve **Anlamlı mı?**
 3. **Kanıt grafiği.** Veriyi, uydurulan trendi ve güven bandını gösteren etkileşimli grafik.

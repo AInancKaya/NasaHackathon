@@ -2,21 +2,13 @@
 // Reviewed and directed by the project author.
 import { useState } from "react";
 import type { Variable } from "./api";
+import { geocode, type Place } from "./PlaceSearch";
 
 export interface Target {
   varId: string;
   lat: number;
   lon: number;
 }
-
-interface Place {
-  label: string;
-  lat: number;
-  lon: number;
-}
-
-// Place search uses the free, no-login Open-Meteo geocoding API (only the typed text is sent).
-const GEOCODE = "https://geocoding-api.open-meteo.com/v1/search";
 
 // Preset places: coordinates are map locations, not results. All numbers shown later are live.
 const PRESETS: Place[] = [
@@ -94,18 +86,7 @@ export default function Wizard({ vars, onDone }: Props) {
     setSearching(true);
     setSearchError(null);
     try {
-      const res = await fetch(`${GEOCODE}?name=${encodeURIComponent(name)}&count=5&language=en&format=json`);
-      if (!res.ok) throw new Error(String(res.status));
-      const body = (await res.json()) as {
-        results?: { name: string; admin1?: string; country?: string; latitude: number; longitude: number }[];
-      };
-      setFound(
-        (body.results ?? []).map((r) => ({
-          label: [r.name, r.admin1, r.country].filter(Boolean).join(", "),
-          lat: r.latitude,
-          lon: r.longitude,
-        })),
-      );
+      setFound(await geocode(name));
     } catch {
       setFound(null);
       setSearchError("Place search is unavailable right now. Pick one of the preset places instead.");

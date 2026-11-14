@@ -1,6 +1,6 @@
 <!-- AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant. -->
 
-# TerraTrend — rules for every session
+# AeroVestige — rules for every session
 
 NASA Space Apps 2026, "Be An Earth System Trend Detective!". Read only this file,
 `docs/CONTRACT.md`, and the folder your task owns. `docs/CONTRACT.md` is the API source of truth;

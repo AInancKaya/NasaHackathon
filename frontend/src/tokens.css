@@ -29,4 +29,5 @@
   --radius: 12px;
   --gap: 12px;
   --gutter: 16px;
+  --topbar: 76px; /* top of panels that sit under the top bar */
 }

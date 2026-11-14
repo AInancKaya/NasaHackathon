@@ -35,7 +35,8 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
     let disposed = false;
     let ro: ResizeObserver | undefined;
     // globe.gl and three.js are loaded on demand so the page shell paints first
-    Promise.all([import("globe.gl"), import("three"), import("./overlay")]).then(([{ default: Globe }, THREE, ov]) => {
+    let stopMeteors: (() => void) | undefined;
+    Promise.all([import("globe.gl"), import("three"), import("./overlay"), import("./meteors")]).then(([{ default: Globe }, THREE, ov, met]) => {
       if (disposed) return;
       const css = getComputedStyle(document.documentElement);
       const g = new Globe(el)
@@ -74,6 +75,7 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
       overlay.current = o;
       // 8k lines on large screens; 4k on phones keeps GPU memory low
       linesCanvas(el.clientWidth < 768 ? 4096 : 8192).then((c) => !disposed && o.setLines(c));
+      stopMeteors = met.startMeteors(THREE, g.scene(), g.camera() as InstanceType<typeof THREE.PerspectiveCamera>);
 
       ro = new ResizeObserver(() => g.width(el.clientWidth).height(el.clientHeight));
       ro.observe(el);
@@ -82,6 +84,7 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
     return () => {
       disposed = true;
       ro?.disconnect();
+      stopMeteors?.();
       overlay.current?.dispose();
       overlay.current = null;
       globe.current?._destructor();

@@ -1,4 +1,4 @@
-# TerraTrend — NASA Space Apps 2026 "Be An Earth System Trend Detective!" Planı
+# AeroVestige — NASA Space Apps 2026 "Be An Earth System Trend Detective!" Planı
 
 ## Context
 

@@ -1,6 +1,6 @@
 # AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 # Reviewed and directed by the project author.
-"""TerraTrend API (FastAPI). Contract: docs/CONTRACT.md."""
+"""AeroVestige API (FastAPI). Contract: docs/CONTRACT.md."""
 import asyncio
 import json
 import logging
@@ -23,7 +23,7 @@ from backend.sources import NoDataError, UpstreamError, era5, power_grid, power_
 from backend.stats.field import trend_field
 from backend.stats.trend import analyze_trend
 
-log = logging.getLogger("terratrend")
+log = logging.getLogger("aerovestige")
 
 
 @asynccontextmanager
@@ -33,7 +33,7 @@ async def _lifespan(_: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title="TerraTrend", lifespan=_lifespan)
+app = FastAPI(title="AeroVestige", lifespan=_lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
