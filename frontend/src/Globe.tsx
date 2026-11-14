@@ -3,7 +3,7 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
 import type GlobeGL from "globe.gl";
 import type { TrendMap } from "./api";
-import { BUMP_URL, EARTH_FALLBACK_URL, EARTH_URL, SKY_URL, linesCanvas } from "./basemap";
+import { BUMP_URL, EARTH_FALLBACK_URL, EARTH_URL, WATER_URL, linesCanvas } from "./basemap";
 import type { Overlay } from "./overlay";
 import { slopeLimit } from "./scale";
 
@@ -21,6 +21,9 @@ interface Props {
 
 type GlobeInstance = InstanceType<typeof GlobeGL>;
 
+const IDLE_MS = 6000; // auto-rotate after this long without interaction
+const SKY_RADIUS = 40000; // beyond the furthest zoom (100 globe radii), inside the camera's far plane
+
 const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPick, onLimit }, ref) {
   const host = useRef<HTMLDivElement>(null);
   const globe = useRef<GlobeInstance | null>(null);
@@ -29,22 +32,31 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
 
   const overlay = useRef<Overlay | null>(null);
   const [ready, setReady] = useState(false);
+  const idle = useRef<number>();
+  const pickedRef = useRef(picked);
+  pickedRef.current = picked;
+  const stopRotateRef = useRef(() => {});
+  const scheduleRotateRef = useRef(() => {});
 
   useEffect(() => {
     const el = host.current!;
     let disposed = false;
     let ro: ResizeObserver | undefined;
-    // globe.gl and three.js are loaded on demand so the page shell paints first
     let stopMeteors: (() => void) | undefined;
-    Promise.all([import("globe.gl"), import("three"), import("./overlay"), import("./meteors")]).then(([{ default: Globe }, THREE, ov, met]) => {
+    // globe.gl and three.js are loaded on demand so the page shell paints first
+    Promise.all([import("globe.gl"), import("three"), import("./overlay"), import("./stars"), import("./meteors")]).then(
+      ([{ default: Globe }, THREE, ov, st, met]) => {
       if (disposed) return;
       const css = getComputedStyle(document.documentElement);
+      // The sun: a directional light kept up and to the left of the camera, so relief and ocean glint
+      // read from every viewpoint; a softer ambient keeps the night side legible.
+      const sun = new THREE.DirectionalLight(0xffffff, 2.2);
       const g = new Globe(el)
-        .backgroundColor(css.getPropertyValue("--bg").trim())
-        .backgroundImageUrl(SKY_URL)
+        .backgroundColor("#000003")
+        .lights([new THREE.AmbientLight(0xffffff, 1.9), sun])
         .bumpImageUrl(BUMP_URL)
-        .atmosphereColor(css.getPropertyValue("--accent").trim())
-        .atmosphereAltitude(0.18)
+        .atmosphereColor("#6aaeff")
+        .atmosphereAltitude(0.16)
         .width(el.clientWidth)
         .height(el.clientHeight)
         .pointRadius(1.2)
@@ -52,37 +64,86 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
         .pointColor(() => css.getPropertyValue("--accent").trim())
         .onGlobeClick(({ lat, lng }) => onPickRef.current(lat, lng));
       g.pointOfView({ altitude: el.clientWidth < 600 ? 3.4 : 2.5 });
-      g.controls().autoRotate = false;
       globe.current = g;
+
+      const camera = g.camera();
+      const controls = g.controls();
+      const placeSun = () => {
+        sun.position.copy(camera.position).applyAxisAngle(new THREE.Vector3(0, 1, 0), 0.5);
+        sun.position.y += camera.position.length() * 0.35;
+      };
+      placeSun();
+      controls.addEventListener("change", placeSun);
+
+      // Idle auto-rotate: starts after IDLE_MS without input, stops as soon as the user touches the globe.
+      controls.autoRotateSpeed = 0.35;
+      const stopRotate = () => {
+        controls.autoRotate = false;
+        clearTimeout(idle.current);
+      };
+      const scheduleRotate = () => {
+        clearTimeout(idle.current);
+        idle.current = window.setTimeout(() => (controls.autoRotate = !pickedRef.current), IDLE_MS);
+      };
+      stopRotateRef.current = stopRotate;
+      scheduleRotateRef.current = scheduleRotate;
+      controls.addEventListener("start", stopRotate);
+      controls.addEventListener("end", scheduleRotate);
+      scheduleRotate();
 
       // Earth imagery at full sharpness: mipmaps plus the GPU's maximum anisotropic filtering, so the
       // texture stays crisp at grazing angles near the limb instead of smearing.
-      const anisotropy = g.renderer().capabilities.getMaxAnisotropy();
+      const renderer = g.renderer();
+      const anisotropy = renderer.capabilities.getMaxAnisotropy();
+      const mat = g.globeMaterial() as InstanceType<typeof THREE.MeshPhongMaterial>;
+      mat.bumpScale = 4;
+      mat.shininess = 40;
+      mat.specular = new THREE.Color("#3c4a5c");
       const applyEarth = (tex: InstanceType<typeof THREE.Texture>) => {
         if (disposed) return tex.dispose();
         tex.colorSpace = THREE.SRGBColorSpace;
         tex.anisotropy = anisotropy;
-        const mat = g.globeMaterial() as InstanceType<typeof THREE.MeshPhongMaterial>;
         mat.map = tex;
         mat.color.set("#ffffff");
         mat.needsUpdate = true;
       };
       const loader = new THREE.TextureLoader().setCrossOrigin("anonymous");
       loader.load(EARTH_URL, applyEarth, undefined, () => loader.load(EARTH_FALLBACK_URL, applyEarth));
+      loader.load(WATER_URL, (tex) => {
+        if (disposed) return tex.dispose();
+        mat.specularMap = tex;
+        mat.needsUpdate = true;
+      });
 
-      const o = ov.createOverlay(g.getGlobeRadius(), anisotropy);
+      const o = ov.createOverlay(g.getGlobeRadius(), anisotropy, renderer);
       g.scene().add(o.mesh);
       overlay.current = o;
+      if (new URLSearchParams(location.search).get("overlay") === "canvas") o.useFallback("forced by ?overlay=canvas");
+      // Compile now, so a shader that fails on this GPU switches to the fallback before the first frame.
+      renderer.compile(g.scene(), camera);
       // 8k lines on large screens; 4k on phones keeps GPU memory low
       linesCanvas(el.clientWidth < 768 ? 4096 : 8192).then((c) => !disposed && o.setLines(c));
-      stopMeteors = met.startMeteors(THREE, g.scene(), g.camera() as InstanceType<typeof THREE.PerspectiveCamera>);
+
+      st.createSky(SKY_RADIUS)
+        .then((sky) => (disposed ? undefined : g.scene().add(sky)))
+        .catch((e) => console.error("[TerraVestige] star background could not be loaded", e));
+      stopMeteors = met.startMeteors(THREE, g.scene(), camera as InstanceType<typeof THREE.PerspectiveCamera>);
+
+      const canvas = renderer.domElement;
+      canvas.addEventListener("webglcontextlost", (e) => {
+        e.preventDefault(); // allow the browser to restore the context; three.js re-uploads everything
+        console.error("[TerraVestige] WebGL context lost; waiting for the browser to restore it");
+      });
+      canvas.addEventListener("webglcontextrestored", () => console.warn("[TerraVestige] WebGL context restored"));
 
       ro = new ResizeObserver(() => g.width(el.clientWidth).height(el.clientHeight));
       ro.observe(el);
       setReady(true);
-    });
+      },
+    );
     return () => {
       disposed = true;
+      clearTimeout(idle.current);
       ro?.disconnect();
       stopMeteors?.();
       overlay.current?.dispose();
@@ -103,10 +164,16 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, onPic
 
   useEffect(() => {
     globe.current?.pointsData(picked ? [picked] : []);
+    // Hold still while a case file is open; resume the idle rotation when it closes.
+    if (picked) stopRotateRef.current();
+    else scheduleRotateRef.current();
   }, [picked, ready]);
 
   useImperativeHandle(ref, () => ({
-    flyTo: (lat, lon, ms = 1500) => globe.current?.pointOfView({ lat, lng: lon, altitude: 1.6 }, ms),
+    flyTo: (lat, lon, ms = 1500) => {
+      stopRotateRef.current();
+      globe.current?.pointOfView({ lat, lng: lon, altitude: 1.6 }, ms);
+    },
   }));
 
   return <div ref={host} className="globe" role="img" aria-label="Interactive globe of trend slope per grid cell" />;

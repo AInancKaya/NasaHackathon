@@ -26,7 +26,7 @@ uniform vec2 uOrigin;      // first cell centre (lon, lat), degrees
 uniform vec2 uStep;        // cell size (dlon, dlat), degrees
 uniform vec3 uStops[7];    // diverging colour scale, sRGB 0..1
 uniform float uAlpha;      // overall overlay opacity
-uniform float uFaded;      // extra fade of non-significant cells
+uniform float uFaded;      // opacity of non-significant cells relative to significant ones
 varying vec2 vUv;
 
 vec4 cubic(float v) {
@@ -78,9 +78,10 @@ void main() {
     if (d.b > 0.02) {
       float t = clamp(d.r / d.b * 2.0 - 1.0, -1.0, 1.0);
       float sig = clamp(d.g / d.b, 0.0, 1.0);
-      // Opacity grows with trend strength: near-zero trends stay clear (pale colours over the dark ocean
-      // would otherwise read as grey fog), strong trends are fully coloured.
-      float a = uAlpha * smoothstep(0.04, 0.6, abs(t)) * mix(uFaded, 1.0, sig) * smoothstep(0.3, 0.7, d.b);
+      // Opacity grows quickly with trend strength: a third of the colour range is already fully coloured,
+      // while near-zero trends stay clear (their pale colours would read as grey fog over the dark ocean).
+      // Non-significant cells keep their hue at reduced opacity: muted, but still clearly readable.
+      float a = uAlpha * smoothstep(0.03, 0.35, abs(t)) * mix(uFaded, 1.0, sig) * smoothstep(0.3, 0.7, d.b);
       col = vec4(ramp(t), a);
     }
   }
@@ -97,6 +98,8 @@ export interface Overlay {
   mesh: THREE.Mesh;
   setMap: (map: TrendMap | null, limit: number) => void;
   setLines: (canvas: HTMLCanvasElement | null) => void;
+  /** Switch to the canvas fallback (called automatically on a shader or texture failure). */
+  useFallback: (why: unknown) => void;
   dispose: () => void;
 }
 
@@ -133,7 +136,57 @@ function dataTexture(map: TrendMap, limit: number): THREE.DataTexture {
   return tex;
 }
 
-export function createOverlay(radius: number, anisotropy: number): Overlay {
+/** CPU fallback for GPUs where the shader fails: the same colours and fading painted into an
+ *  equirectangular canvas (smoothed by upscaling), with the coastlines drawn on top. */
+function paintFallback(canvas: HTMLCanvasElement, map: TrendMap | null, limit: number, lines: HTMLCanvasElement | null) {
+  const ctx = canvas.getContext("2d")!;
+  const { width: W, height: H } = canvas;
+  ctx.clearRect(0, 0, W, H);
+  if (map) {
+    const stops = divergingStops();
+    const alpha = token("--overlay-alpha");
+    const faded = token("--sig-faded-alpha");
+    const nLat = map.lats.length;
+    const nLon = map.lons.length;
+    const northFirst = map.lats[0] > map.lats[nLat - 1];
+    const cells = document.createElement("canvas");
+    cells.width = nLon;
+    cells.height = nLat;
+    const img = cells.getContext("2d")!.createImageData(nLon, nLat);
+    for (let i = 0; i < nLat; i++) {
+      const y = northFirst ? i : nLat - 1 - i; // canvas rows run north to south
+      for (let j = 0; j < nLon; j++) {
+        const v = map.slope[i][j];
+        if (v === null) continue;
+        const t = limit > 0 ? Math.max(-1, Math.min(1, v / limit)) : 0;
+        const x = (t + 1) * 3;
+        const k = Math.min(Math.floor(x), 5);
+        const f = x - k;
+        const c = [0, 1, 2].map((n) => stops[k][n] + (stops[k + 1][n] - stops[k][n]) * f);
+        const m = Math.max(0, Math.min(1, (Math.abs(t) - 0.03) / 0.32));
+        const a = alpha * m * m * (3 - 2 * m) * (map.sig[i][j] ? 1 : faded);
+        const o = (y * nLon + j) * 4;
+        img.data.set([c[0], c[1], c[2], Math.round(a * 255)], o);
+      }
+    }
+    cells.getContext("2d")!.putImageData(img, 0, 0);
+    const dLon = map.lons[1] - map.lons[0];
+    const dLat = Math.abs(map.lats[1] - map.lats[0]);
+    const north = Math.max(map.lats[0], map.lats[nLat - 1]) + dLat / 2;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(
+      cells,
+      ((map.lons[0] - dLon / 2 + 180) / 360) * W,
+      ((90 - north) / 180) * H,
+      ((nLon * dLon) / 360) * W,
+      ((nLat * dLat) / 180) * H,
+    );
+  }
+  if (lines) ctx.drawImage(lines, 0, 0, W, H);
+}
+
+export function createOverlay(radius: number, anisotropy: number, renderer: THREE.WebGLRenderer): Overlay {
   const stops = divergingStops().map((c) => new THREE.Vector3(c[0] / 255, c[1] / 255, c[2] / 255));
   const empty = new THREE.DataTexture(new Uint8Array(4), 1, 1);
   empty.needsUpdate = true;
@@ -161,26 +214,78 @@ export function createOverlay(radius: number, anisotropy: number): Overlay {
     polygonOffsetFactor: -2,
     polygonOffsetUnits: -4,
   });
-  const mesh = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.005, 180, 90), material);
+  const mesh: THREE.Mesh<THREE.SphereGeometry, THREE.Material> = new THREE.Mesh(new THREE.SphereGeometry(radius * 1.005, 180, 90), material);
   mesh.rotation.y = -Math.PI / 2; // same orientation as the three-globe Earth, so uv = (lon, lat)
   mesh.raycast = () => {}; // clicks go through to the globe
 
+  // Guard: if the shader does not compile or a texture upload throws on this GPU, log it and switch to a
+  // plain canvas texture, so the globe never ends up black or empty.
+  let current: { map: TrendMap | null; limit: number; lines: HTMLCanvasElement | null } = { map: null, limit: 0, lines: null };
+  let fallback: { canvas: HTMLCanvasElement; tex: THREE.CanvasTexture; mat: THREE.MeshBasicMaterial } | null = null;
+  const repaint = () => {
+    if (!fallback) return;
+    paintFallback(fallback.canvas, current.map, current.limit, current.lines);
+    fallback.tex.needsUpdate = true;
+  };
+  const useFallback = (why: unknown) => {
+    if (fallback) return;
+    console.error("[TerraVestige] trend overlay shader failed; switching to the canvas fallback.", why);
+    const canvas = document.createElement("canvas");
+    canvas.width = 4096;
+    canvas.height = 2048;
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.anisotropy = anisotropy;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    const mat = new THREE.MeshBasicMaterial({
+      map: tex,
+      transparent: true,
+      depthWrite: false,
+      polygonOffset: true,
+      polygonOffsetFactor: -2,
+      polygonOffsetUnits: -4,
+    });
+    fallback = { canvas, tex, mat };
+    mesh.material = mat;
+    repaint();
+  };
+  const previous = renderer.debug.onShaderError;
+  renderer.debug.onShaderError = (gl, program, vs, fs) => {
+    useFallback(`${gl.getProgramInfoLog(program) ?? ""} ${gl.getShaderInfoLog(fs) ?? ""} ${gl.getShaderInfoLog(vs) ?? ""}`);
+    previous?.(gl, program, vs, fs);
+  };
+  const guard = (fn: () => void) => {
+    try {
+      fn();
+    } catch (e) {
+      useFallback(e);
+    }
+  };
+
   return {
     mesh,
+    useFallback,
     setMap(map, limit) {
+      current = { ...current, map, limit };
+      if (fallback) return repaint();
       if (uniforms.uData.value !== empty) uniforms.uData.value.dispose();
       uniforms.uData.value = empty;
       uniforms.uHasData.value = false;
       if (!map) return;
-      const nLat = map.lats.length;
-      const nLon = map.lons.length;
-      uniforms.uData.value = dataTexture(map, limit);
-      uniforms.uSize.value.set(nLon, nLat);
-      uniforms.uOrigin.value.set(map.lons[0], Math.min(map.lats[0], map.lats[nLat - 1]));
-      uniforms.uStep.value.set(map.lons[1] - map.lons[0], Math.abs(map.lats[1] - map.lats[0]));
-      uniforms.uHasData.value = true;
+      guard(() => {
+        // the scale depends on the variable (data-palette), so read the stops again for every map
+        divergingStops().forEach((c, k) => uniforms.uStops.value[k].set(c[0] / 255, c[1] / 255, c[2] / 255));
+        const nLat = map.lats.length;
+        const nLon = map.lons.length;
+        uniforms.uData.value = dataTexture(map, limit);
+        uniforms.uSize.value.set(nLon, nLat);
+        uniforms.uOrigin.value.set(map.lons[0], Math.min(map.lats[0], map.lats[nLat - 1]));
+        uniforms.uStep.value.set(map.lons[1] - map.lons[0], Math.abs(map.lats[1] - map.lats[0]));
+        uniforms.uHasData.value = true;
+      });
     },
     setLines(canvas) {
+      current = { ...current, lines: canvas };
+      if (fallback) return repaint();
       if (uniforms.uLines.value !== empty) uniforms.uLines.value.dispose();
       uniforms.uLines.value = empty;
       uniforms.uHasLines.value = false;
@@ -192,6 +297,9 @@ export function createOverlay(radius: number, anisotropy: number): Overlay {
       uniforms.uHasLines.value = true;
     },
     dispose() {
+      renderer.debug.onShaderError = previous;
+      fallback?.tex.dispose();
+      fallback?.mat.dispose();
       if (uniforms.uData.value !== empty) uniforms.uData.value.dispose();
       if (uniforms.uLines.value !== empty) uniforms.uLines.value.dispose();
       empty.dispose();

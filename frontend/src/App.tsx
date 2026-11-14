@@ -1,43 +1,95 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, getTrendMap, getVariables, type TrendMap, type Variable } from "./api";
-import CaseTours from "./CaseTours";
+import { ApiError, getCases, getTrendMap, getVariables, type Case, type TrendMap, type Variable } from "./api";
+import CaseTours, { TourBar, type CaseTarget } from "./CaseTours";
+import CitySearch from "./CitySearch";
 import Glossary from "./Glossary";
+import { IconBook, IconCompass, IconFlask, IconGlobe, IconInfo, IconClose } from "./icons";
+import Intro from "./Intro";
+import Legend from "./Legend";
+import Method from "./Method";
+import { PlaceName } from "./placeName";
+import VarPicker from "./VarPicker";
 import Wizard from "./Wizard";
 import "./guide.css";
+import "./ui.css";
 import Globe, { type GlobeHandle } from "./Globe";
-import PlaceSearch from "./PlaceSearch";
+import { PALETTE_WORDS, paletteFor } from "./scale";
 
-// The case file pulls in Plotly (a few MB): load it only when someone opens a case.
+// The case file pulls in Plotly (about 1 MB): load it only when someone opens a case.
 const CaseFile = lazy(() => import("./CaseFile"));
 
 function errText(e: unknown): string {
   return e instanceof ApiError ? `${e.error}: ${e.detail}` : "Unexpected error.";
 }
 
-type GuideTab = "layers" | "wizard" | "cases" | "glossary";
-// Icon paths are simple 24x24 strokes drawn for this app.
-const TABS: { id: GuideTab; label: string; title: string; icon: string }[] = [
-  { id: "layers", label: "Layers", title: "Data layer", icon: "M12 3 2 8l10 5 10-5-10-5ZM2 13l10 5 10-5M2 18l10 5 10-5" },
-  { id: "wizard", label: "Guide", title: "Guide me", icon: "M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm4 6-2.5 5.5L8 16l2.5-5.5L16 8Z" },
-  { id: "cases", label: "Cases", title: "Case tours", icon: "M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21Zm0-9a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z" },
-  { id: "glossary", label: "Glossary", title: "Glossary", icon: "M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5v-17ZM4 21.5A2.5 2.5 0 0 1 6.5 19H20v3H6.5" },
+type GuideTab = "wizard" | "cases" | "glossary" | "method";
+// `short` is the rail label under the icon; `label` titles the drawer.
+const TABS: { id: GuideTab; label: string; short: string; icon: JSX.Element }[] = [
+  { id: "cases", label: "Case tours", short: "Tours", icon: <IconCompass size={22} /> },
+  { id: "wizard", label: "Guide me", short: "Guide", icon: <IconInfo size={22} /> },
+  { id: "glossary", label: "Glossary", short: "Glossary", icon: <IconBook size={22} /> },
+  { id: "method", label: "Method", short: "Method", icon: <IconFlask size={22} /> },
 ];
 
+const INTRO_KEY = "terravestige.intro.seen";
+function introSeen(): boolean {
+  try {
+    return localStorage.getItem(INTRO_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+function rememberIntro() {
+  try {
+    localStorage.setItem(INTRO_KEY, "1");
+  } catch {
+    /* private mode: show it again next time */
+  }
+}
+
+/** ?var=&lat=&lon=(&box=) from a shared case link; ignored unless every value is valid. */
+function readDeepLink(): { varId: string | null; lat?: number; lon?: number; box: number | null } | null {
+  const q = new URLSearchParams(location.search);
+  const varId = q.get("var");
+  const lat = Number(q.get("lat"));
+  const lon = Number(q.get("lon"));
+  const box = Number(q.get("box"));
+  const hasPoint = q.has("lat") && q.has("lon") && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+  if (!varId && !hasPoint) return null;
+  return {
+    varId,
+    ...(hasPoint ? { lat, lon } : {}),
+    box: q.has("box") && box > 0 && box <= 10 ? box : null,
+  };
+}
+
 export default function App() {
-  const globe = useRef<GlobeHandle>(null); 
+  const globe = useRef<GlobeHandle>(null);
+  const search = useRef<HTMLInputElement>(null);
+  const link = useRef(readDeepLink());
+  const pendingFly = useRef<{ lat: number; lon: number } | null>(
+    link.current?.lat !== undefined ? { lat: link.current.lat, lon: link.current.lon! } : null,
+  );
   const [vars, setVars] = useState<Variable[] | null>(null);
   const [varsError, setVarsError] = useState<string | null>(null);
   const [varId, setVarId] = useState<string | null>(null);
   const [map, setMap] = useState<TrendMap | null>(null);
   const [loading, setLoading] = useState(false);
+  const [everLoaded, setEverLoaded] = useState(false);
   const [mapError, setMapError] = useState<string | null>(null);
   const [limit, setLimit] = useState(0);
-  const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null);
-  const [box, setBox] = useState<number | null>(null);
-  // The data-layer drawer starts open on wide screens, closed on phones so the globe stays visible.
-  const [guide, setGuide] = useState<GuideTab | null>(() => (window.innerWidth > 900 ? "layers" : null));
+  const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(
+    link.current?.lat !== undefined ? { lat: link.current.lat, lon: link.current.lon! } : null,
+  );
+  const [place, setPlace] = useState<string | null>(null);
+  const [box, setBox] = useState<number | null>(link.current?.box ?? null);
+  const [guide, setGuide] = useState<GuideTab | null>(null);
+  const [cases, setCases] = useState<Case[] | null>(null);
+  const [casesError, setCasesError] = useState<string | null>(null);
+  const [tour, setTour] = useState<number | null>(null);
+  const [intro, setIntro] = useState(() => link.current?.lat === undefined && !introSeen());
 
   useEffect(() => {
     const ac = new AbortController();
@@ -45,9 +97,13 @@ export default function App() {
       .then((all) => {
         const withMap = all.filter((v) => v.has_map);
         setVars(withMap);
-        setVarId((cur) => cur ?? withMap[0]?.id ?? null);
+        const wanted = link.current?.varId;
+        setVarId((cur) => cur ?? (withMap.find((v) => v.id === wanted) ?? withMap[0])?.id ?? null);
       })
       .catch((e) => e.name !== "AbortError" && setVarsError(errText(e)));
+    getCases(ac.signal)
+      .then(setCases)
+      .catch((e) => e.name !== "AbortError" && setCasesError(errText(e)));
     return () => ac.abort();
   }, []);
 
@@ -61,6 +117,7 @@ export default function App() {
       .then((m) => {
         setMap(m);
         setLoading(false);
+        setEverLoaded(true);
       })
       .catch((e) => {
         if (e.name === "AbortError") return;
@@ -70,45 +127,91 @@ export default function App() {
     return () => ac.abort();
   }, [varId]);
 
+  // A deep link flies the globe once it exists; the globe is created asynchronously, so try again shortly after.
+  useEffect(() => {
+    const p = pendingFly.current;
+    if (!map || !p) return;
+    globe.current?.flyTo(p.lat, p.lon);
+    const t = setTimeout(() => globe.current?.flyTo(p.lat, p.lon), 900);
+    pendingFly.current = null;
+    return () => clearTimeout(t);
+  }, [map]);
+
+  // Keep the address bar on the open case, so it can be copied or bookmarked at any time.
+  useEffect(() => {
+    if (!varId) return;
+    const q = new URLSearchParams({ var: varId });
+    if (picked) {
+      q.set("lat", picked.lat.toFixed(2));
+      q.set("lon", picked.lon.toFixed(2));
+      if (box) q.set("box", String(box));
+    }
+    history.replaceState(null, "", `${location.pathname}?${q}`);
+  }, [varId, picked, box]);
+
   const onPick = useCallback((lat: number, lon: number) => {
+    if (window.matchMedia("(max-width: 600px)").matches) setGuide(null); // one bottom sheet at a time
     setBox(null);
+    setPlace(null);
     setPicked({ lat, lon });
   }, []);
   const onGoto = useCallback((lat: number, lon: number) => {
     globe.current?.flyTo(lat, lon);
     setBox(null);
+    setPlace(null);
     setPicked({ lat, lon });
   }, []);
-  const openCase = useCallback((t: { varId: string; lat: number; lon: number; box?: number | null }) => {
+  const openCase = useCallback((t: CaseTarget | { varId: string; lat: number; lon: number; box?: number | null }) => {
     setVarId(t.varId);
     setGuide(null);
     globe.current?.flyTo(t.lat, t.lon);
     setBox(t.box ?? null);
+    setPlace(null);
     setPicked({ lat: t.lat, lon: t.lon });
   }, []);
+
+  const goTour = useCallback(
+    (i: number) => {
+      if (!cases?.[i]) return;
+      const c = cases[i];
+      setTour(i);
+      openCase({ varId: c.var, lat: c.lat, lon: c.lon, box: c.box });
+    },
+    [cases, openCase],
+  );
+
+  const closeIntro = useCallback(() => {
+    rememberIntro();
+    setIntro(false);
+  }, []);
+
+  // Set before the map arrives, so the overlay and legend read the right colour scale.
+  useEffect(() => {
+    document.documentElement.dataset.palette = paletteFor(varId);
+  }, [varId]);
+  const words = PALETTE_WORDS[paletteFor(varId)];
+
   const current = vars?.find((v) => v.id === varId);
-  const error = varsError ?? mapError;
+  // The old map is still in state for one render after a switch: treat that as loading too.
+  const mapLoading = loading || (!!map && map.var !== varId);
+  const error = varsError ?? (mapError && current ? `The ${current.name.toLowerCase()} map could not be loaded. ${mapError}` : mapError);
+  const period = vars?.[0] ? `${vars[0].start_year}–${vars[0].end_year}` : null;
 
   return (
-    <div className={guide ? "app drawer-open" : "app"}>
+    <div className={`app${tour !== null ? " touring" : ""}${picked ? " has-case" : ""}${guide ? " guide-open" : ""}`}>
       <Globe ref={globe} map={map} picked={picked} onPick={onPick} onLimit={setLimit} />
 
-      <header className="topbar">
-        <h1 className="brand">AeroVestige</h1>
-        <PlaceSearch onSelect={(p) => onGoto(p.lat, p.lon)} />
-      </header>
-
-      {!picked && (
+      {!picked && tour === null && (
         <div className="hero">
           <h2>Where is Earth changing, and where is it changing the opposite way?</h2>
           <p>
-            Red = rising, blue = falling. Faded = not significant. <strong>Click anywhere</strong> to open its case
-            file.
+            {words.up[0].toUpperCase() + words.up.slice(1)} is rising, {words.down} is falling, faded is not significant. <strong>Click anywhere</strong> or find your city
+            to open its case file.
           </p>
         </div>
       )}
 
-      {(loading || !vars) && !error && (
+      {!everLoaded && !error && (
         <div className="loading" role="status">
           <div className="spinner" aria-hidden="true" />
           {current ? `Loading the ${current.name.toLowerCase()} map…` : "Loading the trend map…"}
@@ -116,94 +219,116 @@ export default function App() {
         </div>
       )}
 
-      <nav className="rail" aria-label="Tools">
-        {TABS.map((t) => (
-          <button
-            key={t.id}
-            className="rail-btn"
-            aria-pressed={guide === t.id}
-            title={t.title}
-            onClick={() => setGuide(guide === t.id ? null : t.id)}
-          >
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d={t.icon} />
-            </svg>
-            <span>{t.label}</span>
+      <header className="topbar">
+        <div className="brand">
+          <h1>
+            <IconGlobe size={20} /> TerraVestige
+          </h1>
+          <button className="btn icon ghost" onClick={() => setIntro(true)} aria-label="About TerraVestige" title="About">
+            <IconInfo size={18} />
           </button>
-        ))}
-      </nav>
+        </div>
+        <CitySearch
+          ref={search}
+          onPlace={(p) => {
+            openCase({ varId: varId ?? "", lat: p.lat, lon: p.lon });
+            setPlace(p.label);
+          }}
+        />
+      </header>
 
-      {guide && (
-        <section className="panel drawer" aria-label={TABS.find((t) => t.id === guide)?.title}>
-          <div className="cf-head">
-            <h2>{TABS.find((t) => t.id === guide)?.title}</h2>
-            <button className="btn icon" onClick={() => setGuide(null)} aria-label="Close">
-              ✕
+      <div className="leftcol">
+        <div className="panel top">
+          <VarPicker vars={vars} value={varId} loading={mapLoading} onChange={setVarId} />
+        </div>
+        <nav className="rail" aria-label="Help and tours">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className="rail-btn"
+              aria-pressed={guide === t.id}
+              title={t.label}
+              onClick={() => setGuide(guide === t.id ? null : t.id)}
+            >
+              {t.icon}
+              <span>{t.short}</span>
             </button>
-          </div>
-          {guide === "layers" && (
-            <div className="layers" role="radiogroup" aria-label="Variable">
-              {vars?.map((v) => (
-                <button
-                  key={v.id}
-                  role="radio"
-                  aria-checked={v.id === varId}
-                  className="layer"
-                  onClick={() => setVarId(v.id)}
-                >
-                  <span className="layer-name">{v.name}</span>
-                  <span className="layer-unit mono">{v.unit}</span>
-                  {v.id === varId && <span className="layer-desc">{v.description}</span>}
-                </button>
-              ))}
-              {!vars && !varsError && <p className="muted">Loading variables…</p>}
+          ))}
+        </nav>
+
+        {tour !== null && cases && (
+          <TourBar cases={cases} index={tour} onGo={goTour} onExit={() => setTour(null)} />
+        )}
+
+        {guide && (
+          <section className="panel guide" aria-label={TABS.find((t) => t.id === guide)?.label}>
+            <div className="sheet-grip" aria-hidden="true" />
+            <div className="guide-head">
+              <h2>{TABS.find((t) => t.id === guide)?.label}</h2>
+              <button className="btn icon" onClick={() => setGuide(null)} aria-label="Close">
+                <IconClose size={18} />
+              </button>
             </div>
-          )}
-          {guide === "wizard" && vars && <Wizard vars={vars} onDone={(t) => openCase(t)} />}
-          {guide === "cases" && <CaseTours onSelect={openCase} />}
-          {guide === "glossary" && <Glossary />}
-        </section>
-      )}
+            {guide === "wizard" && vars && <Wizard vars={vars} onDone={(t) => openCase(t)} />}
+            {guide === "cases" && (
+              <CaseTours
+                cases={cases}
+                error={casesError}
+                onStart={(i) => {
+                  setGuide(null);
+                  goTour(i);
+                }}
+              />
+            )}
+            {guide === "glossary" && <Glossary />}
+            {guide === "method" && <Method />}
+          </section>
+        )}
+      </div>
 
       {picked && current && (
         <Suspense fallback={<section className="panel casefile muted">Opening the case file…</section>}>
-          <CaseFile variable={current} lat={picked.lat} lon={picked.lon} box={box} onGoto={onGoto} onClose={() => setPicked(null)} />
+          <PlaceName.Provider value={place}>
+            <CaseFile
+              variable={current}
+              lat={picked.lat}
+              lon={picked.lon}
+              box={box}
+              onGoto={onGoto}
+              onClose={() => setPicked(null)}
+            />
+          </PlaceName.Provider>
         </Suspense>
       )}
 
-      <section className="panel legend" aria-label="Legend">
-        {error ? (
-          <p className="error" role="alert">
-            {mapError && current ? `The ${current.name.toLowerCase()} map could not be loaded. ` : ""}
-            {error}
-          </p>
-        ) : loading || !vars ? (
-          <p className="muted">Trend legend appears when the map has loaded.</p>
-        ) : map ? (
-          <>
-            <div className="legend-title">
-              <strong>{current?.name}</strong> · trend slope, {map.unit} per decade · {map.period[0]}–{map.period[1]}
-            </div>
-            <div className="bar" aria-hidden="true" />
-            <div className="ticks mono">
-              <span>≤ −{limit.toPrecision(2)}</span>
-              <span>0</span>
-              <span>≥ +{limit.toPrecision(2)}</span>
-            </div>
-            <p className="muted">
-              Faded areas are not significant (FDR q = 0.05). Colour fades out towards zero, so clear areas have
-              little or no trend. Soil wetness has no data over the oceans.
-            </p>
-            <p className="muted small">
-              {map.source} · fetched {map.fetched_at}
-            </p>
-          </>
-        ) : null}
-      </section>
+      <Legend
+        variable={current}
+        map={map}
+        limit={limit}
+        loading={mapLoading || !vars}
+        error={error}
+        onMethod={() => setGuide("method")}
+      />
 
       <p className="credit">
         Imagery: NASA Blue Marble Next Generation · Stars: three-globe · Borders: Natural Earth
       </p>
+
+      {intro && (
+        <Intro
+          period={period}
+          onExplore={closeIntro}
+          onCity={() => {
+            closeIntro();
+            setTimeout(() => search.current?.focus(), 0);
+          }}
+          onTour={() => {
+            closeIntro();
+            if (cases?.length) goTour(0);
+            else setGuide("cases");
+          }}
+        />
+      )}
     </div>
   );
 }

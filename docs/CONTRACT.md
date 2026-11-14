@@ -108,7 +108,7 @@ Response:
 
 ## `GET /api/witness`
 
-Second, independent dataset (Copernicus ERA5 via Open-Meteo) for the same place and period.
+Second, partly independent dataset (Copernicus ERA5 via Open-Meteo; a different reanalysis, though it assimilates many of the same observations as MERRA-2) for the same place and period.
 
 Query: `var: str`, `lat: float`, `lon: float`, optional `start: int`, `end: int`.
 
@@ -140,7 +140,8 @@ Response:
   lats: float[]                // cell centres, ascending
   lons: float[]                // cell centres, ascending
   slope: (float | null)[][]    // Sen's slope per decade, [lat][lon]
-  sig: (bool | null)[][]       // significant after Benjamini-Hochberg FDR (q = 0.05), [lat][lon]
+  sig: (bool | null)[][]       // significant after a lag-1 autocorrelation correction of each cell's
+                               // seasonal MK p-value, then Benjamini-Hochberg FDR (q = 0.05), [lat][lon]
   period: [int, int]           // [start_year, end_year]
   unit: str
   source: str
@@ -186,3 +187,25 @@ Case {
   citation_url: str
 }
 ```
+
+## `GET /api/geocode`
+
+Added after S0 (announced addition; no existing field changed). Place-name search through the
+Open-Meteo geocoding API, so a user can find a town by name. Not a data endpoint: no numbers.
+
+Query: `q: str` (place name, 1 to 100 characters).
+
+Response: `Place[]`, up to 5 entries, best match first.
+
+```
+Place {
+  name: str
+  country: str | null
+  admin1: str | null      // region or state, when known
+  lat: float
+  lon: float
+}
+```
+
+Errors: 400 `bad_request` for a missing or empty `q`; 404 `not_found` when no place matches;
+502 `upstream_error` when the geocoding service fails.

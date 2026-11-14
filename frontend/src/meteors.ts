@@ -12,7 +12,6 @@ type Three = typeof THREE_NS;
 export function startMeteors(THREE: Three, scene: THREE_NS.Scene, camera: THREE_NS.PerspectiveCamera): () => void {
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return () => {};
 
-  const DEPTH = 2000; // well behind the globe (camera sits a few hundred units from it)
   const pos = new Float32Array(9); // tapered triangle: tail point + two head corners
   const geo = new THREE.BufferGeometry();
   geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
@@ -38,6 +37,8 @@ export function startMeteors(THREE: Three, scene: THREE_NS.Scene, camera: THREE_
   };
 
   function fire() {
+    // always well behind the globe, which sits at the camera's distance from the origin
+    const DEPTH = camera.position.length() + 1500;
     const halfH = DEPTH * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
     const halfW = halfH * camera.aspect;
     const x0 = (Math.random() * 1.6 - 0.8) * halfW;

@@ -2,7 +2,7 @@
 // Reviewed and directed by the project author.
 import { useState } from "react";
 import type { Variable } from "./api";
-import { geocode, type Place } from "./PlaceSearch";
+import { geocode, type Place } from "./geocode";
 
 export interface Target {
   varId: string;
@@ -42,7 +42,7 @@ const KINDS: { id: Kind; label: string }[] = [
 // Variable ids from GET /api/variables, with the reason a student would care.
 const PICK: Record<Interest, Record<Kind, [string, string]>> = {
   temp: {
-    city: ["t2m_min", "Cities hold heat overnight, so warmer nights are what people there feel first."],
+    city: ["t2m_min", "Warmer nights are what people feel first. This is the regional trend around the city; the data is too coarse to show the city's own heat island."],
     farm: ["t2m_max", "Crops suffer most on the hottest afternoons."],
     coast: ["t2m", "Average air temperature is the clearest signal of a warming coast."],
     mountain: ["t2m", "Cold regions are where average warming is most visible."],

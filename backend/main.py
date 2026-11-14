@@ -1,6 +1,6 @@
 # AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 # Reviewed and directed by the project author.
-"""AeroVestige API (FastAPI). Contract: docs/CONTRACT.md."""
+"""TerraVestige API (FastAPI). Contract: docs/CONTRACT.md."""
 import asyncio
 import json
 import logging
@@ -19,11 +19,11 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.cache import cached_blob
 from backend.catalog import BY_ID, ERA5_DAILY, VARIABLES
-from backend.sources import NoDataError, UpstreamError, era5, power_grid, power_point, power_region
+from backend.sources import NoDataError, UpstreamError, era5, geocode, power_grid, power_point, power_region
 from backend.stats.field import trend_field
 from backend.stats.trend import analyze_trend
 
-log = logging.getLogger("aerovestige")
+log = logging.getLogger("terravestige")
 
 
 @asynccontextmanager
@@ -33,7 +33,7 @@ async def _lifespan(_: FastAPI):
     task.cancel()
 
 
-app = FastAPI(title="AeroVestige", lifespan=_lifespan)
+app = FastAPI(title="TerraVestige", lifespan=_lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 
@@ -101,8 +101,9 @@ CASES = [
      "citation": "Turner et al. (2016), Nature: Absence of 21st century warming on Antarctic "
                  "Peninsula consistent with natural variability.",
      "citation_url": "https://doi.org/10.1038/nature18645"},
-    {"id": "mediterranean", "title": "The thirsty Mediterranean",
-     "question": "Has rainfall around the Mediterranean really gone down?",
+    {"id": "mediterranean", "title": "The Mediterranean drought puzzle",
+     "question": "Studies of the 20th century found the Mediterranean drying. Is that drying "
+                 "detectable in the satellite-era rainfall record, or would it take many more years?",
      "var": "prectotcorr", "lat": 38.0, "lon": 20.0, "box": 10.0,
      "citation": "Hoerling et al. (2012), Journal of Climate: "
                  "On the Increased Frequency of Mediterranean Drought.",
@@ -130,6 +131,14 @@ def variables():
 @app.get("/api/cases")
 def cases():
     return CASES
+
+
+@app.get("/api/geocode")
+def geocode_place(q: str = Query(..., min_length=1, max_length=100)):
+    query = q.strip()
+    if not query:
+        raise BadRequest("q must not be empty.")
+    return geocode.search(query)
 
 
 def _variable(var: str, need: str | None = None) -> dict:
@@ -225,13 +234,13 @@ def _compute_map(v: dict) -> bytes:
 
 
 def _map_bytes(var: str) -> bytes:
-    """Trend map response: memory, then disk (cache/trendmap_*.json), then computed from the grid."""
+    """Trend map response: memory, then disk (cache/trendmap_v2_*.json; v2 = autocorrelation-corrected sig), then computed from the grid."""
     v = _variable(var, "has_map")
     if var in _maps:
         return _maps[var]
     with _map_locks.setdefault(var, threading.Lock()):
         if var not in _maps:
-            _maps[var] = cached_blob(f"trendmap_{v['param']}.json", lambda: _compute_map(v),
+            _maps[var] = cached_blob(f"trendmap_v2_{v['param']}.json", lambda: _compute_map(v),
                                      newer_than=f"power_grid_{v['param']}.npz")
         return _maps[var]
 
@@ -276,6 +285,19 @@ def twin(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query(..
     }
 
 
+class _Frontend(StaticFiles):
+    """index.html is revalidated on every load, so a new build is picked up at once; Vite's hashed
+    files under assets/ never change and can be cached for good."""
+
+    async def get_response(self, path, scope):
+        response = await super().get_response(path, scope)
+        if path.startswith("assets/"):
+            response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
+        else:
+            response.headers["Cache-Control"] = "no-cache"
+        return response
+
+
 dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
 if dist.is_dir():
-    app.mount("/", StaticFiles(directory=dist, html=True), name="frontend")
+    app.mount("/", _Frontend(directory=dist, html=True), name="frontend")

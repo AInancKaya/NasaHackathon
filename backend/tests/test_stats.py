@@ -6,7 +6,7 @@ import pandas as pd
 import pymannkendall as mk
 import pytest
 
-from backend.stats.field import bh_fdr, seasonal_mk_sen, trend_field
+from backend.stats.field import bh_fdr, correct_p, lag1_autocorr, seasonal_mk_sen, trend_field
 from backend.stats.trend import analyze_trend
 
 
@@ -78,3 +78,22 @@ def test_years_to_detect_when_not_significant():
     st = analyze_trend(s, "Test", "u", "here")["stats"]
     if st["mk_p_hr"] >= 0.05:
         assert st["years_to_detect"] > 0
+
+
+def test_lag1_autocorr_and_correction():
+    rng = np.random.default_rng(3)
+    n = 480
+    season = 5 * np.sin(2 * np.pi * np.arange(n) / 12)
+    white = rng.normal(0, 1, n)
+    red = np.empty(n)  # AR(1) with phi = 0.6
+    red[0] = white[0]
+    for k in range(1, n):
+        red[k] = 0.6 * red[k - 1] + white[k]
+    r1 = lag1_autocorr(np.stack([season + white, season + red], axis=1))
+    assert abs(r1[0]) < 0.15
+    assert r1[1] == pytest.approx(0.6, abs=0.1)
+    # persistence makes a p-value larger, never smaller; no persistence leaves it unchanged
+    p = np.array([0.01, 0.01, 0.01])
+    out = correct_p(p, np.array([0.0, 0.6, -0.5]))
+    assert out[0] == pytest.approx(0.01) and out[2] == pytest.approx(0.01)
+    assert out[1] > 0.05

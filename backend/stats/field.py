@@ -8,7 +8,15 @@ pymannkendall.seasonal_test, the series is padded with NaN to whole years and re
 (year, month); S, var(S) (with tie correction) and Sen slopes are pooled within each month
 column. One row is one year, so the Sen slope is per year and x10 gives per decade.
 Results match pymannkendall.seasonal_test cell by cell (see backend/tests/).
+
+trend_field then corrects each cell's p-value for month-to-month persistence, which the seasonal
+test ignores and which makes trends look more significant than they are: z is divided by
+sqrt((1 + r1) / (1 - r1)), with r1 the lag-1 autocorrelation of the deseasonalised anomalies,
+clipped to [0, 0.9] so the correction never makes a cell more significant (an effective-sample-size
+correction, Bayley & Hammersley 1946; the lag-1 case of Hamed & Rao 1998, used in the case file).
 """
+import warnings
+
 import numpy as np
 from scipy.stats import norm
 
@@ -72,6 +80,35 @@ def seasonal_mk_sen(data: np.ndarray, period: int = PERIOD) -> tuple:
     return p.reshape(shape), slope.reshape(shape), n_valid.reshape(shape)
 
 
+def lag1_autocorr(data: np.ndarray, period: int = PERIOD) -> np.ndarray:
+    """Lag-1 autocorrelation of the deseasonalised monthly anomalies for every cell (NaN-aware).
+
+    data: (time, ...) contiguous monthly. Returns an array shaped like data[0].
+    """
+    data = np.asarray(data, dtype=float)
+    x = data.reshape(data.shape[0], -1)
+    month = np.arange(x.shape[0]) % period
+    a = x.copy()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)  # all-NaN month columns (ocean in soil wetness)
+        for m in range(period):
+            a[month == m] -= np.nanmean(x[month == m], axis=0)
+    a0, a1 = a[:-1], a[1:]
+    ok = np.isfinite(a0) & np.isfinite(a1)
+    num = np.where(ok, a0 * a1, 0).sum(axis=0)
+    den = np.where(np.isfinite(a), a * a, 0).sum(axis=0)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        r1 = np.where(den > 0, num / den, np.nan)
+    return r1.reshape(data.shape[1:])
+
+
+def correct_p(p: np.ndarray, r1: np.ndarray) -> np.ndarray:
+    """Two-sided p-value with z deflated by the lag-1 variance inflation factor (r1 clipped to [0, 0.9])."""
+    r = np.clip(np.nan_to_num(r1, nan=0.0), 0.0, 0.9)
+    z = norm.isf(np.asarray(p, dtype=float) / 2)
+    return 2 * norm.sf(z / np.sqrt((1 + r) / (1 - r)))
+
+
 def bh_fdr(p: np.ndarray, q: float = 0.05) -> np.ndarray:
     """Benjamini-Hochberg: True where the hypothesis is rejected at FDR q. NaN p -> False."""
     p = np.asarray(p, dtype=float)
@@ -91,12 +128,13 @@ def bh_fdr(p: np.ndarray, q: float = 0.05) -> np.ndarray:
 
 
 def trend_field(data: np.ndarray, q: float = 0.05) -> dict:
-    """`slope` (Sen, per decade) and `sig` (BH-FDR at q) as [lat][lon] lists for /api/trendmap.
+    """`slope` (Sen, per decade) and `sig` (autocorrelation-corrected, then BH-FDR at q) as [lat][lon] lists for /api/trendmap.
 
     data: (time, lat, lon), contiguous monthly. Cells with fewer than MIN_MONTHS valid months
     are null in both outputs and excluded from the FDR.
     """
     p, slope, n_valid = seasonal_mk_sen(data)
+    p = correct_p(p, lag1_autocorr(data))
     usable = (n_valid >= MIN_MONTHS) & np.isfinite(p) & np.isfinite(slope)
     p = np.where(usable, p, np.nan)
     sig = bh_fdr(p, q)
