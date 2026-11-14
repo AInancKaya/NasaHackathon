@@ -1,6 +1,6 @@
 // AI disclosure: this file was written with assistance from Claude (Anthropic), an AI coding assistant.
 // Reviewed and directed by the project author.
-import { forwardRef, useEffect, useState } from "react";
+import { forwardRef, useEffect, useRef, useState } from "react";
 import { ApiError } from "./api";
 import { geocode, type Place } from "./geocode";
 import { IconLocate, IconSearch } from "./icons";
@@ -17,13 +17,15 @@ const CitySearch = forwardRef<HTMLInputElement, Props>(function CitySearch({ onP
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [locating, setLocating] = useState(false);
+  const chosen = useRef<string | null>(null); // the name a pick wrote into the box: do not search it again
 
   useEffect(() => {
     const name = text.trim();
-    if (name.length < 2) {
+    if (name.length < 2 || name === chosen.current) {
       setFound(null);
       return;
     }
+    chosen.current = null;
     const ac = new AbortController();
     const t = setTimeout(() => {
       setBusy(true);
@@ -52,6 +54,7 @@ const CitySearch = forwardRef<HTMLInputElement, Props>(function CitySearch({ onP
 
   function choose(p: Place) {
     setFound(null);
+    chosen.current = p.label.split(",")[0].trim();
     setText(p.label.split(",")[0]);
     setMsg(null);
     onPlace(p);
