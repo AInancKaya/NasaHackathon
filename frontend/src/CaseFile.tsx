@@ -3,10 +3,19 @@
 import { useEffect, useRef, useState } from "react";
 import { ApiError, getSeries, getTwin, getWitness, type Series, type Variable, type Witness } from "./api";
 import EvidenceChart from "./EvidenceChart";
+import { IconCheck, IconClose, IconShare } from "./icons";
+import { fmtFetched } from "./varmeta";
 import VerdictCards from "./VerdictCards";
 
 const errText = (e: unknown) => (e instanceof ApiError ? `${e.error}: ${e.detail}` : "Unexpected error.");
 const CLOSE_MS = 180; // exit is quicker than the 280 ms entrance
+
+/** The deep link for this case: the app opens it from ?var=&lat=&lon=(&box=). */
+export function caseUrl(v: string, lat: number, lon: number, box?: number | null): string {
+  const q = new URLSearchParams({ var: v, lat: lat.toFixed(2), lon: lon.toFixed(2) });
+  if (box) q.set("box", String(box));
+  return `${location.origin}${location.pathname}?${q}`;
+}
 
 const place = (lat: number, lon: number) =>
   `${Math.abs(lat).toFixed(2)}° ${lat >= 0 ? "N" : "S"}, ${Math.abs(lon).toFixed(2)}° ${lon >= 0 ? "E" : "W"}`;
@@ -35,7 +44,10 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
   const witnessAc = useRef<AbortController | null>(null);
   const [twinMsg, setTwinMsg] = useState<string | null>(null);
   const [twinBusy, setTwinBusy] = useState(false);
+  const [shared, setShared] = useState<"copied" | "manual" | null>(null);
+  const [attempt, setAttempt] = useState(0);
   const id = variable.id;
+  const link = caseUrl(id, lat, lon, box);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -45,6 +57,7 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
     setWitnessError(null);
     setWitnessBusy(false);
     setTwinMsg(null);
+    setShared(null);
     getSeries(id, lat, lon, ac.signal, box)
       .then(setSeries)
       .catch((e: Error) => e.name !== "AbortError" && setError(errText(e)));
@@ -52,7 +65,22 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
       ac.abort();
       witnessAc.current?.abort();
     };
-  }, [id, lat, lon, box]);
+  }, [id, lat, lon, box, attempt]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && !e.defaultPrevented && close();
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  });
+
+  async function share() {
+    try {
+      await navigator.clipboard.writeText(link);
+      setShared("copied");
+    } catch {
+      setShared("manual"); // clipboard blocked: show the link to copy by hand
+    }
+  }
 
   // The ERA5 check is on demand: it is a second upstream request, so only run it when asked.
   async function checkWitness() {
@@ -101,19 +129,44 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
           <h2 className="cf-title">{variable.name}</h2>
           <span className="cf-place mono">{box ? `${box}° box around ${place(lat, lon)}` : place(lat, lon)}</span>
         </div>
-        <button className="btn icon" onClick={close} aria-label="Close case file">
-          ✕
-        </button>
+        <div className="cf-tools">
+          <button className="btn icon" onClick={share} aria-label="Share this case" title="Share this case">
+            {shared === "copied" ? <IconCheck size={18} /> : <IconShare size={18} />}
+          </button>
+          <button className="btn icon" onClick={close} aria-label="Close case file" title="Close (Esc)">
+            <IconClose size={18} />
+          </button>
+        </div>
       </header>
 
+      <div aria-live="polite">
+        {shared === "copied" && <p className="cf-shared small">Link copied. Anyone who opens it lands on this case.</p>}
+        {shared === "manual" && (
+          <label className="cf-shared small">
+            Copy this link:
+            <input readOnly value={link} onFocus={(e) => e.currentTarget.select()} autoFocus />
+          </label>
+        )}
+      </div>
+
       {error ? (
-        <p className="error cf-block" role="alert">
-          {error}
-        </p>
+        <div className="cf-block cf-error" role="alert">
+          <p className="error">The evidence for this place could not be loaded.</p>
+          <p className="muted small mono">{error}</p>
+          <button className="btn" onClick={() => setAttempt(attempt + 1)}>
+            Try again
+          </button>
+        </div>
       ) : !series || !st ? (
-        <div className="cf-block cf-loading" role="status">
-          <div className="spinner" aria-hidden="true" />
-          Gathering the evidence…
+        <div className="cf-skeleton" role="status" aria-label="Gathering the evidence">
+          <div className="sk sk-headline" />
+          <div className="sk-label">Gathering the evidence: reading NASA POWER for this place…</div>
+          <div className="sk sk-chart" />
+          <div className="sk-cards">
+            <div className="sk sk-card wide" />
+            <div className="sk sk-card" />
+            <div className="sk sk-card" />
+          </div>
         </div>
       ) : (
         <>
@@ -142,7 +195,7 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
 
           <VerdictCards series={series} unit={variable.unit} />
           <p className="muted small">
-            {series.source} · fetched {series.fetched_at}
+            {series.source} · fetched {fmtFetched(series.fetched_at)}
           </p>
         </>
       )}
@@ -159,12 +212,18 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
               {witness && (
                 <div className={`witness ${witness.agrees ? "agree" : "disagree"}`}>
                   <span className="pill yes">{witness.agrees ? "ERA5 agrees" : "ERA5 disagrees"}</span>
+                  <p className="small">
+                    {witness.agrees
+                      ? "An independent dataset shows the same direction of change here."
+                      : "An independent dataset shows the opposite direction here. Treat this trend with caution."}
+                    {box ? " This check compares the centre point, not the whole box." : ""}
+                  </p>
                   <p className="mono small">
                     ERA5 {signed(witness.sen_per_decade)} · NASA POWER {signed(witness.primary_sen_per_decade)}{" "}
                     {variable.unit}/decade
                   </p>
                   <p className="muted small">
-                    {witness.source} · fetched {witness.fetched_at}
+                    {witness.source} · fetched {fmtFetched(witness.fetched_at)}
                   </p>
                 </div>
               )}

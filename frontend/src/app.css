@@ -510,9 +510,6 @@ p {
   .app .legend {
     bottom: 34px;
   }
-  .legend .muted:not(.small) {
-    display: none; /* the headline already explains faded cells */
-  }
   .app .top h1 {
     margin-bottom: 4px;
     font-size: 15px;

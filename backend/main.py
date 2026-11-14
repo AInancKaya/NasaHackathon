@@ -101,8 +101,9 @@ CASES = [
      "citation": "Turner et al. (2016), Nature: Absence of 21st century warming on Antarctic "
                  "Peninsula consistent with natural variability.",
      "citation_url": "https://doi.org/10.1038/nature18645"},
-    {"id": "mediterranean", "title": "The thirsty Mediterranean",
-     "question": "Has rainfall around the Mediterranean really gone down?",
+    {"id": "mediterranean", "title": "The Mediterranean drought puzzle",
+     "question": "Studies of the 20th century found the Mediterranean drying. Is that drying "
+                 "detectable in the satellite-era rainfall record, or would it take many more years?",
      "var": "prectotcorr", "lat": 38.0, "lon": 20.0, "box": 10.0,
      "citation": "Hoerling et al. (2012), Journal of Climate: "
                  "On the Increased Frequency of Mediterranean Drought.",
