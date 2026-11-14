@@ -72,31 +72,31 @@ async def _validation(_: Request, e: RequestValidationError):
 # Every citation_url is a DOI that resolves; titles/authors were checked against Crossref.
 CASES = [
     {"id": "arctic", "title": "The Arctic fever",
-     "question": "Is the Arctic really warming faster than the rest of the planet?",
+     "question": "Is the Arctic warming, and how fast? Compare it with a place near you.",
      "var": "t2m", "lat": 80.0, "lon": 20.0, "box": 5.0,
      "citation": "Rantanen et al. (2022), Communications Earth & Environment: "
                  "The Arctic has warmed nearly four times faster than the globe since 1979.",
      "citation_url": "https://doi.org/10.1038/s43247-022-00498-3"},
     {"id": "antarctic-peninsula", "title": "The pause at the bottom of the world",
-     "question": "Did the Antarctic Peninsula keep warming, or did it stall?",
+     "question": "Did the Antarctic Peninsula keep warming, or did the warming stall?",
      "var": "t2m", "lat": -65.0, "lon": -63.0, "box": 5.0,
      "citation": "Turner et al. (2016), Nature: Absence of 21st century warming on Antarctic "
                  "Peninsula consistent with natural variability.",
      "citation_url": "https://doi.org/10.1038/nature18645"},
     {"id": "mediterranean", "title": "The thirsty Mediterranean",
-     "question": "Is the Mediterranean getting drier?",
+     "question": "Has rainfall around the Mediterranean really gone down?",
      "var": "prectotcorr", "lat": 38.0, "lon": 20.0, "box": 10.0,
      "citation": "Hoerling et al. (2012), Journal of Climate: "
                  "On the Increased Frequency of Mediterranean Drought.",
      "citation_url": "https://doi.org/10.1175/JCLI-D-11-00296.1"},
     {"id": "sahel", "title": "The Sahel's rain",
-     "question": "Is the Sahel's rainfall coming back after the great drought?",
+     "question": "Is rain returning to the Sahel after the great drought of the 1970s and 80s?",
      "var": "prectotcorr", "lat": 14.0, "lon": 0.0, "box": 10.0,
      "citation": "Biasutti (2019), WIREs Climate Change: "
                  "Rainfall trends in the African Sahel: Characteristics, processes, and causes.",
      "citation_url": "https://doi.org/10.1002/wcc.591"},
     {"id": "southwest-us", "title": "The Southwest dries out",
-     "question": "Are the soils of the American Southwest drying?",
+     "question": "Is the soil of the American Southwest getting drier?",
      "var": "gwettop", "lat": 37.0, "lon": -110.0, "box": 10.0,
      "citation": "Williams et al. (2020), Science: Large contribution from anthropogenic warming "
                  "to an emerging North American megadrought.",

@@ -3,11 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, getTrendMap, getVariables, type TrendMap, type Variable } from "./api";
 import CaseFile from "./CaseFile";
+import CaseTours from "./CaseTours";
+import Glossary from "./Glossary";
+import Wizard from "./Wizard";
+import "./guide.css";
 import Globe, { type GlobeHandle } from "./Globe";
 
 function errText(e: unknown): string {
   return e instanceof ApiError ? `${e.error}: ${e.detail}` : "Unexpected error.";
 }
+
+type GuideTab = "wizard" | "cases" | "glossary";
+const TABS: { id: GuideTab; label: string }[] = [
+  { id: "wizard", label: "Guide me" },
+  { id: "cases", label: "Case tours" },
+  { id: "glossary", label: "Glossary" },
+];
 
 export default function App() {
   const globe = useRef<GlobeHandle>(null); 
@@ -19,6 +30,8 @@ export default function App() {
   const [mapError, setMapError] = useState<string | null>(null);
   const [limit, setLimit] = useState(0);
   const [picked, setPicked] = useState<{ lat: number; lon: number } | null>(null);
+  const [box, setBox] = useState<number | null>(null);
+  const [guide, setGuide] = useState<GuideTab | null>(null);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -51,10 +64,21 @@ export default function App() {
     return () => ac.abort();
   }, [varId]);
 
-  const onPick = useCallback((lat: number, lon: number) => setPicked({ lat, lon }), []);
+  const onPick = useCallback((lat: number, lon: number) => {
+    setBox(null);
+    setPicked({ lat, lon });
+  }, []);
   const onGoto = useCallback((lat: number, lon: number) => {
     globe.current?.flyTo(lat, lon);
+    setBox(null);
     setPicked({ lat, lon });
+  }, []);
+  const openCase = useCallback((t: { varId: string; lat: number; lon: number; box?: number | null }) => {
+    setVarId(t.varId);
+    setGuide(null);
+    globe.current?.flyTo(t.lat, t.lon);
+    setBox(t.box ?? null);
+    setPicked({ lat: t.lat, lon: t.lon });
   }, []);
   const current = vars?.find((v) => v.id === varId);
   const error = varsError ?? mapError;
@@ -63,6 +87,7 @@ export default function App() {
     <div className="app">
       <Globe ref={globe} map={map} picked={picked} onPick={onPick} onLimit={setLimit} />
 
+      <div className="leftcol">
       <header className="panel top">
         <h1>TerraTrend</h1>
         <label htmlFor="var">Variable</label>
@@ -74,10 +99,37 @@ export default function App() {
           ))}
         </select>
         {current && <p className="muted">{current.description}</p>}
+        <div className="tabs" role="group" aria-label="Help">
+          {TABS.map((t) => (
+            <button
+              key={t.id}
+              className="btn tab"
+              aria-pressed={guide === t.id}
+              onClick={() => setGuide(guide === t.id ? null : t.id)}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </header>
 
+      {guide && (
+        <section className="panel guide" aria-label={TABS.find((t) => t.id === guide)?.label}>
+          <div className="cf-head">
+            <h2>{TABS.find((t) => t.id === guide)?.label}</h2>
+            <button className="btn" onClick={() => setGuide(null)} aria-label="Close">
+              ✕
+            </button>
+          </div>
+          {guide === "wizard" && vars && <Wizard vars={vars} onDone={(t) => openCase(t)} />}
+          {guide === "cases" && <CaseTours onSelect={openCase} />}
+          {guide === "glossary" && <Glossary />}
+        </section>
+      )}
+      </div>
+
       {picked && current && (
-        <CaseFile variable={current} lat={picked.lat} lon={picked.lon} onGoto={onGoto} onClose={() => setPicked(null)} />
+        <CaseFile variable={current} lat={picked.lat} lon={picked.lon} box={box} onGoto={onGoto} onClose={() => setPicked(null)} />
       )}
 
       <section className="panel legend" aria-label="Legend">
