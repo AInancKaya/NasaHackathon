@@ -34,7 +34,7 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
     setTwinMsg(null);
     const fail = (set: (m: string) => void) => (e: Error) => e.name !== "AbortError" && set(errText(e));
     getSeries(id, lat, lon, ac.signal, box).then(setSeries).catch(fail(setError));
-    if (variable.has_witness) getWitness(id, lat, lon, ac.signal).then(setWitness).catch(fail(setWitnessError));
+    if (variable.has_witness && !box) getWitness(id, lat, lon, ac.signal).then(setWitness).catch(fail(setWitnessError));
     return () => ac.abort();
   }, [id, lat, lon, box, variable.has_witness]);
 
@@ -83,7 +83,7 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
         </>
       )}
 
-      {variable.has_witness && (
+      {variable.has_witness && !box && (
         <div className="witness" aria-live="polite">
           {witnessError ? (
             <p className="error">{witnessError}</p>
