@@ -3,19 +3,27 @@
 """TerraTrend API (FastAPI). Contract: docs/CONTRACT.md."""
 from pathlib import Path
 
-from fastapi import FastAPI, Request
+import numpy as np
+import pandas as pd
+from fastapi import FastAPI, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-from backend.catalog import VARIABLES
-from backend.sources import NoDataError, UpstreamError
+from backend.catalog import BY_ID, ERA5_DAILY, VARIABLES
+from backend.sources import NoDataError, UpstreamError, era5, power_grid, power_point, power_region
+from backend.stats.field import trend_field
+from backend.stats.trend import analyze_trend
 
 app = FastAPI(title="TerraTrend")
 
 
 class BadRequest(Exception):
+    pass
+
+
+class InsufficientData(Exception):
     pass
 
 
@@ -26,6 +34,11 @@ def _error(status: int, error: str, detail: str) -> JSONResponse:
 @app.exception_handler(BadRequest)
 async def _bad_request(_: Request, e: BadRequest):
     return _error(400, "bad_request", str(e))
+
+
+@app.exception_handler(InsufficientData)
+async def _insufficient(_: Request, e: InsufficientData):
+    return _error(422, "insufficient_data", str(e))
 
 
 @app.exception_handler(NoDataError)
@@ -99,6 +112,130 @@ def variables():
 @app.get("/api/cases")
 def cases():
     return CASES
+
+
+def _variable(var: str, need: str | None = None) -> dict:
+    v = BY_ID.get(var)
+    if v is None:
+        raise NoDataError(f"Unknown variable '{var}'. See /api/variables.")
+    if need and not v[need]:
+        raise BadRequest(f"Variable '{var}' does not support this endpoint ({need} is false).")
+    return v
+
+
+def _years(v: dict, start: int | None, end: int | None) -> tuple[int, int]:
+    start = v["start_year"] if start is None else start
+    end = v["end_year"] if end is None else end
+    if not (v["start_year"] <= start <= end <= v["end_year"]):
+        raise BadRequest(f"start/end must satisfy {v['start_year']} <= start <= end <= {v['end_year']}.")
+    return start, end
+
+
+def _slice(s: pd.Series, start: int, end: int) -> pd.Series:
+    s = s[(s.index.year >= start) & (s.index.year <= end)]
+    if s.notna().sum() < 36:
+        raise InsufficientData(f"At least 36 valid months are needed (got {int(s.notna().sum())}).")
+    return s
+
+
+def _power_series(v: dict, lat: float, lon: float, box: float | None, start: int, end: int):
+    """NASA POWER monthly series for the period (the full range is fetched, so the cache is shared)."""
+    if box is None:
+        s, fetched_at = power_point.fetch_monthly(lat, lon, v["start_year"], v["end_year"], v["param"])
+    else:
+        s, fetched_at = power_region.fetch_box_monthly(lat, lon, box, v["start_year"], v["end_year"], v["param"])
+    return _slice(s, start, end), fetched_at
+
+
+def _where(lat: float, lon: float, box: float | None) -> str:
+    return (f"{lat:.2f}°, {lon:.2f}°" if box is None
+            else f"{box:g}°-wide box centred on {lat:.2f}°, {lon:.2f}°")
+
+
+def _nan_to_none(a) -> list:
+    return [None if np.isnan(x) else float(x) for x in a]
+
+
+@app.get("/api/series")
+def series(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180),
+           box: float | None = Query(None, gt=0, le=10), start: int | None = None, end: int | None = None):
+    v = _variable(var)
+    start, end = _years(v, start, end)
+    s, fetched_at = _power_series(v, lat, lon, box, start, end)
+    result = analyze_trend(s, v["name"], v["unit"], _where(lat, lon, box))
+    return {
+        "var": var, "lat": lat, "lon": lon, "box": box,
+        "dates": [d.strftime("%Y-%m") for d in s.index],
+        "values": _nan_to_none(s.values),
+        **result, "source": v["source"], "fetched_at": fetched_at,
+    }
+
+
+@app.get("/api/witness")
+def witness(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180),
+            start: int | None = None, end: int | None = None):
+    v = _variable(var, "has_witness")
+    start, end = _years(v, start, end)
+    primary, _ = _power_series(v, lat, lon, None, start, end)
+    e, fetched_at = era5.fetch_monthly(lat, lon, v["start_year"], v["end_year"], ERA5_DAILY[v["param"]])
+    stats = analyze_trend(_slice(e, start, end), v["name"], v["unit"], "")["stats"]
+    primary_sen = analyze_trend(primary, v["name"], v["unit"], "")["stats"]["sen_per_decade"]
+    return {
+        "var": var, "lat": lat, "lon": lon, "source": "Copernicus ERA5 (Open-Meteo)",
+        "sen_per_decade": stats["sen_per_decade"], "mk_p": stats["mk_p"],
+        "primary_sen_per_decade": primary_sen,
+        "agrees": bool(np.sign(stats["sen_per_decade"]) == np.sign(primary_sen)),
+        "fetched_at": fetched_at,
+    }
+
+
+_maps: dict = {}
+
+
+def _map(var: str) -> dict:
+    """Trend map for a variable; computed once per process and per fetch of the grid."""
+    v = _variable(var, "has_map")
+    grid, fetched_at = power_grid.fetch_grid(v["param"])
+    cached = _maps.get(var)
+    if cached and cached["fetched_at"] == fetched_at:
+        return cached
+    years = np.array([int(d[:4]) for d in grid["dates"]])
+    keep = (years >= v["start_year"]) & (years <= v["end_year"])
+    result = trend_field(grid["values"][keep])
+    out = {
+        "var": var, "lats": grid["lats"].tolist(), "lons": grid["lons"].tolist(),
+        **result, "period": [v["start_year"], v["end_year"]],
+        "unit": v["unit"], "source": v["source"], "fetched_at": fetched_at,
+    }
+    _maps[var] = out
+    return out
+
+
+@app.get("/api/trendmap")
+def trendmap(var: str):
+    return _map(var)
+
+
+@app.get("/api/twin")
+def twin(var: str, lat: float = Query(..., ge=-90, le=90), lon: float = Query(..., ge=-180, le=180)):
+    m = _map(var)
+    slope = np.array(m["slope"], dtype=float)
+    sig = np.array(m["sig"], dtype=bool)  # null (no data) becomes False
+    i = int(np.abs(np.array(m["lats"]) - lat).argmin())
+    j = int(np.abs(np.array(m["lons"]) - lon).argmin())
+    origin_slope = slope[i, j]
+    found = None
+    if np.isfinite(origin_slope) and origin_slope != 0:
+        score = np.where(sig & (np.sign(slope) == -np.sign(origin_slope)), np.abs(slope), np.nan)
+        if np.isfinite(score).any():
+            a, b = np.unravel_index(np.nanargmax(score), score.shape)
+            found = {"lat": m["lats"][a], "lon": m["lons"][b], "sen_per_decade": float(slope[a, b])}
+    return {
+        "var": var,
+        "origin": {"lat": lat, "lon": lon,
+                   "sen_per_decade": float(origin_slope) if np.isfinite(origin_slope) else None},
+        "twin": found, "period": m["period"], "fetched_at": m["fetched_at"],
+    }
 
 
 dist = Path(__file__).resolve().parent.parent / "frontend" / "dist"
