@@ -4,10 +4,23 @@
 // UI-only labels for the variables from GET /api/variables: group, icon and a one-line plain description.
 // No numbers here; everything shown about a variable's data comes from the API.
 import type { ReactNode } from "react";
-import { IconDrop, IconRain, IconSoil, IconThermo, IconThermoDown, IconThermoUp, IconVapour, IconWind } from "./icons";
+import {
+  IconDrop,
+  IconIce,
+  IconLeaf,
+  IconRain,
+  IconSnow,
+  IconSoil,
+  IconThermo,
+  IconThermoDown,
+  IconThermoUp,
+  IconVapour,
+  IconWave,
+  IconWind,
+} from "./icons";
 
-export type Group = "Temperature" | "Water" | "Wind" | "Other";
-export const GROUPS: Group[] = ["Temperature", "Water", "Wind", "Other"];
+export type Group = "Temperature" | "Water" | "Wind" | "Ocean and ice" | "Land and plants" | "Other";
+export const GROUPS: Group[] = ["Temperature", "Water", "Wind", "Ocean and ice", "Land and plants", "Other"];
 
 interface Meta {
   group: Group;
@@ -32,6 +45,33 @@ const META: Record<string, Meta> = {
   rh2m: { group: "Water", short: "Humidity", line: "How close the air is to saturation.", icon: (s) => <IconDrop size={s} /> },
   tqv: { group: "Water", short: "Water vapour", line: "All the moisture in the air column above.", icon: (s) => <IconVapour size={s} /> },
   ws10m: { group: "Wind", short: "Wind speed", line: "Average wind 10 m above the ground.", icon: (s) => <IconWind size={s} /> },
+  ts: {
+    group: "Ocean and ice",
+    short: "Sea surface temperature",
+    line: "Temperature of the sea surface (and of the ground on land).",
+    icon: (s) => <IconWave size={s} />,
+  },
+  frseaice: {
+    group: "Ocean and ice",
+    short: "Sea ice",
+    line: "How much of the sea is covered by ice.",
+    icon: (s) => <IconIce size={s} />,
+    note: "Only seas that freeze have data. Land and ice-free seas are blank.",
+  },
+  frsno: {
+    group: "Ocean and ice",
+    short: "Snow cover",
+    line: "How much of the land is covered by snow.",
+    icon: (s) => <IconSnow size={s} />,
+    note: "Only land that gets snow has data. Oceans and snow-free land are blank.",
+  },
+  evptrns: {
+    group: "Land and plants",
+    short: "Evapotranspiration",
+    line: "Water given off by soil and plants: a sign of how active vegetation is.",
+    icon: (s) => <IconLeaf size={s} />,
+    note: "Evapotranspiration is only given over land, so the oceans have no data.",
+  },
 };
 
 export function meta(id: string, name: string, description: string): Meta {

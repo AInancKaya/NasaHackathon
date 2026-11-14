@@ -97,3 +97,22 @@ def test_lag1_autocorr_and_correction():
     out = correct_p(p, np.array([0.0, 0.6, -0.5]))
     assert out[0] == pytest.approx(0.01) and out[2] == pytest.approx(0.01)
     assert out[1] > 0.05
+
+
+def test_segments_find_a_change_of_pace():
+    rng = np.random.default_rng(4)
+    idx = pd.date_range("1981-01-01", periods=45 * 12, freq="MS")
+    yr = idx.year.values + (idx.month.values - 1) / 12
+    y = np.where(yr < 2000, 0.0, 0.05 * (yr - 2000)) + 3 * np.sin(2 * np.pi * idx.month.values / 12)
+    y = y + rng.normal(0, 0.05, len(y))
+    seg = analyze_trend(pd.Series(y, index=idx), "Test", "u", "here")["stats"]["segments"]
+    assert abs(seg["break_year"] - 2000) <= 2
+    assert abs(seg["before_per_decade"]) < 0.1
+    assert seg["after_per_decade"] == pytest.approx(0.5, abs=0.1)
+    assert seg["fit_gain"] > 0.3
+
+
+def test_segments_none_for_short_records():
+    idx = pd.date_range("2000-01-01", periods=120, freq="MS")
+    s = pd.Series(np.random.default_rng(5).normal(0, 1, 120), index=idx)
+    assert analyze_trend(s, "Test", "u", "here")["stats"]["segments"] is None

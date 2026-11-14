@@ -38,25 +38,31 @@ is statistically real. Everything is computed live from real data. There is no s
    and four answer cards: **What** is changing, **Where**, **How much**, and **Is it significant?**
 3. **Evidence chart.** An interactive chart of the data, the fitted trend and its confidence band.
 4. **Second witness.** The trend is re-computed from a second, partly independent dataset (Copernicus ERA5 through Open-Meteo; a different reanalysis that still shares many input observations with MERRA-2)
-   and a badge shows whether both datasets agree on the direction. Available for 8 of 10 variables.
+   and a badge shows whether both datasets agree on the direction. Available for 8 of 14 variables.
 5. **Opposite twin.** Finds the cell with the strongest significant trend in the *opposite* direction and flies
    the globe there. This answers the challenge's core idea: a variable can go up here and down there.
 6. **"How many more years?"** If a trend is not yet significant, the case file estimates how many more years of
    data would be needed to detect it (Weatherhead et al., 1998).
 7. **Detective guide.** A three-question wizard (what are you curious about, where, what kind of place) that
    suggests a variable, plus a plain-language glossary and a short definition and "why it matters" for every variable.
-8. **Ready-made case tours.** Five guided investigations (Arctic warming, the Antarctic Peninsula pause, the
-   Mediterranean rainfall, the Sahel's rain, the US Southwest's soil moisture). Each links to a peer-reviewed
+8. **Ready-made case tours.** Six guided investigations (Arctic warming, Arctic sea ice, the Antarctic Peninsula
+   pause, the Mediterranean rainfall, the Sahel's rain, the US Southwest's soil moisture). Each links to a peer-reviewed
    paper. The tours store only place, variable and citation. Every number is computed live.
 9. **Honest errors.** If a data source fails, the API returns a clear error. It never silently shows fallback data.
    Every result shows when its data was fetched (`fetched_at`).
 
-### Variables (10)
+### Variables (14)
 
-Surface air temperature, daily maximum temperature, daily minimum temperature, precipitation, surface soil
-wetness, relative humidity, wind speed, total column water vapour (NASA POWER / MERRA-2), plus surface solar
-radiation and cloud cover (NASA POWER / CERES). The first 8 have a global trend map. Eight variables have a
-second-witness check against ERA5.
+- **Atmosphere** (NASA POWER / MERRA-2): surface air temperature, daily maximum and minimum temperature,
+  precipitation, relative humidity, wind speed, total column water vapour.
+- **Ocean and ice** (NASA POWER / MERRA-2): sea and land surface temperature, sea ice cover, snow cover.
+  Over the ocean, MERRA-2's sea surface temperature and sea ice come from satellite-based analyses.
+- **Land and plants** (NASA POWER / MERRA-2): surface soil wetness, evapotranspiration (water given off by soil
+  and plants).
+- **Radiation and clouds** (NASA POWER / CERES): surface solar radiation, cloud cover.
+
+The 12 MERRA-2 variables have a global trend map. Eight variables have a second-witness check against ERA5.
+There is no vegetation index (NDVI) in NASA POWER; evapotranspiration is the closest plant-related quantity.
 
 ### Methods
 
@@ -68,6 +74,9 @@ second-witness check against ERA5.
 - Scale: the map grid is about 2° (~200 km) and a case file reads one ~50 km model cell. Values are regional
   averages from reanalysis, so they do not resolve a city's own heat island.
 - Years-to-detect estimate (Weatherhead et al., 1998).
+- "Has the pace changed?": a continuous two-segment line on the annual anomalies (at least 10 years per side)
+  gives the rate before and after the best-fitting break year. It is exploratory, with no p-value, because the
+  break year is chosen from the data. (A Pettitt test is not used: it flags a "break" in any steady trend.)
 - A vectorised map implementation is checked against the `pymannkendall` library in the test suite.
 - Significance level α = 0.05. Slopes are per decade, in SI-based units shown next to every number
   (°C, mm/day, m/s, kg/m², MJ/m²/day, % and fraction).
@@ -137,24 +146,31 @@ olmadığını söyler. Her şey gerçek veriden, anlık hesaplanır. Sentetik y
    **Ne** değişiyor, **Nerede**, **Ne kadar** ve **Anlamlı mı?**
 3. **Kanıt grafiği.** Veriyi, uydurulan trendi ve güven bandını gösteren etkileşimli grafik.
 4. **İkinci tanık.** Trend, kısmen bağımsız ikinci bir veri setiyle (Open-Meteo üzerinden Copernicus ERA5; farklı bir reanaliz, ama MERRA-2 ile birçok gözlemi paylaşır) yeniden hesaplanır.
-   Bir rozet, iki veri setinin yön konusunda uyuşup uyuşmadığını gösterir. 10 değişkenin 8'inde vardır.
+   Bir rozet, iki veri setinin yön konusunda uyuşup uyuşmadığını gösterir. 14 değişkenin 8'inde vardır.
 5. **Zıt ikiz.** Zıt yönde en güçlü anlamlı trende sahip hücreyi bulur ve küreyi oraya uçurur. Görevin ana fikrini
    karşılar: bir değişken burada artarken orada azalabilir.
 6. **"Kaç yıl daha gerekir?"** Trend henüz anlamlı değilse, trendi yakalamak için kaç yıllık ek veri gerektiğini
    tahmin eder (Weatherhead ve ark., 1998).
 7. **Dedektif rehberi.** Üç soruluk bir sihirbaz (neyi merak ediyorsun, nerede, ne tür bir yer) değişken önerir.
    Ayrıca sade bir sözlük ve her değişken için kısa bir tanım ile "neden önemli" açıklaması bulunur.
-8. **Hazır vaka turları.** Beş rehberli inceleme: Arktik ısınması, Antarktika Yarımadası'ndaki duraklama, Akdeniz
+8. **Hazır vaka turları.** Altı rehberli inceleme: Arktik ısınması, Arktik deniz buzu, Antarktika Yarımadası'ndaki duraklama, Akdeniz
    yağışları, Sahel yağmurları, ABD Güneybatısı toprak nemi. Her biri hakemli bir makaleye bağlanır. Turlar yalnızca
    yer, değişken ve atıf içerir. Bütün sayılar canlı hesaplanır.
 9. **Dürüst hatalar.** Bir veri kaynağı çökerse API açık bir hata döner. Sessizce yedek veri göstermez.
    Her sonuç, verinin ne zaman çekildiğini (`fetched_at`) gösterir.
 
-### Değişkenler (10)
+### Değişkenler (14)
 
-Yüzey hava sıcaklığı, günlük en yüksek sıcaklık, günlük en düşük sıcaklık, yağış, yüzey toprak nemi, bağıl nem,
-rüzgâr hızı, toplam sütun su buharı (NASA POWER / MERRA-2) ve yüzey güneş radyasyonu ile bulut örtüsü
-(NASA POWER / CERES). İlk 8'inin küresel trend haritası vardır. 8 değişkende ERA5 ile ikinci tanık kontrolü yapılır.
+- **Atmosfer** (NASA POWER / MERRA-2): yüzey hava sıcaklığı, günlük en yüksek ve en düşük sıcaklık, yağış,
+  bağıl nem, rüzgâr hızı, toplam sütun su buharı.
+- **Okyanus ve buz** (NASA POWER / MERRA-2): deniz ve kara yüzey sıcaklığı, deniz buzu örtüsü, kar örtüsü.
+  Okyanus üzerinde MERRA-2'nin deniz yüzeyi sıcaklığı ve deniz buzu uydu tabanlı analizlerden gelir.
+- **Kara ve bitki** (NASA POWER / MERRA-2): yüzey toprak nemi, evapotranspirasyon (topraktan ve bitkilerden
+  havaya geçen su).
+- **Radyasyon ve bulut** (NASA POWER / CERES): yüzey güneş radyasyonu, bulut örtüsü.
+
+12 MERRA-2 değişkeninin küresel trend haritası vardır. 8 değişkende ERA5 ile ikinci tanık kontrolü yapılır.
+NASA POWER'da bitki örtüsü indeksi (NDVI) yoktur; bitkiyle en ilgili büyüklük evapotranspirasyondur.
 
 ### Yöntemler
 
@@ -166,6 +182,9 @@ rüzgâr hızı, toplam sütun su buharı (NASA POWER / MERRA-2) ve yüzey güne
 - Ölçek: harita ızgarası yaklaşık 2° (~200 km), vaka dosyası ise ~50 km'lik tek bir model hücresini okur. Değerler
   reanalizden gelen bölgesel ortalamalardır; bir şehrin kendi ısı adasını göstermez.
 - "Kaç yıl gerekir" tahmini (Weatherhead ve ark., 1998).
+- "Değişimin hızı değişti mi?": yıllık anomalilere sürekli iki parçalı bir doğru uydurulur (her yanda en az 10 yıl)
+  ve en iyi uyan kırılma yılından önceki ve sonraki hız verilir. Keşif amaçlıdır, p-değeri yoktur, çünkü kırılma
+  yılı veriden seçilir. (Pettitt testi kullanılmaz: düzenli her trendde bir "kırılma" bulur.)
 - Vektörel harita uygulaması, test paketinde `pymannkendall` kütüphanesiyle karşılaştırılır.
 - Anlamlılık düzeyi α = 0,05. Eğimler on yıl başınadır. Her sayının yanında birim yazar (SI tabanlı:
   °C, mm/gün, m/s, kg/m², MJ/m²/gün, % ve oran).

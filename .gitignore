@@ -3,3 +3,11 @@ __pycache__/
 node_modules/
 dist/
 cache/
+# local and editor files (never publish)
+.DS_Store
+.claude/
+.env
+.env.*
+*.log
+# internal planning notes
+PLAN.md

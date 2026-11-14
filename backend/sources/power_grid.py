@@ -7,6 +7,7 @@ import numpy as np
 import xarray as xr
 
 from backend.cache import cached_grid
+from backend.catalog import GRID_SCALE
 from backend.sources import UpstreamError
 
 ZARR_URL = "s3://nasa-power/merra2/temporal/power_merra2_monthly_temporal_utc.zarr"
@@ -23,7 +24,7 @@ def _load(param: str) -> dict:
     if da.sizes["time"] == 0:
         raise UpstreamError("NASA POWER Zarr returned only empty data.")
     return {
-        "values": da.values.astype("float32"),
+        "values": (da.values * GRID_SCALE.get(param, 1.0)).astype("float32"),
         "lats": da["lat"].values, "lons": da["lon"].values,
         "dates": da["time"].dt.strftime("%Y-%m").values.astype(str),
     }

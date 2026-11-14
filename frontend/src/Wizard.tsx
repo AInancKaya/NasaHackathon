@@ -44,7 +44,7 @@ const PICK: Record<Interest, Record<Kind, [string, string]>> = {
   temp: {
     city: ["t2m_min", "Warmer nights are what people feel first. This is the regional trend around the city; the data is too coarse to show the city's own heat island."],
     farm: ["t2m_max", "Crops suffer most on the hottest afternoons."],
-    coast: ["t2m", "Average air temperature is the clearest signal of a warming coast."],
+    coast: ["ts", "The sea surface temperature shows whether the ocean next to the coast is warming."],
     mountain: ["t2m", "Cold regions are where average warming is most visible."],
     dry: ["t2m_max", "Daytime heat is what makes dry regions hard to live in."],
   },
@@ -52,7 +52,7 @@ const PICK: Record<Interest, Record<Kind, [string, string]>> = {
     city: ["prectotcorr", "Rainfall decides flood and water-supply risk for a city."],
     farm: ["gwettop", "Soil wetness shows drought stress on crops directly."],
     coast: ["tqv", "Water vapour in the air feeds coastal storms and heavy rain."],
-    mountain: ["prectotcorr", "Rain and snowfall fill the rivers below."],
+    mountain: ["frsno", "Snow cover stores water for spring and reflects sunlight; losing it changes both."],
     dry: ["prectotcorr", "In dry places, small changes in rainfall matter a lot."],
   },
   air: {

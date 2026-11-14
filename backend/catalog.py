@@ -6,6 +6,11 @@ has_map: the parameter exists in the MERRA-2 monthly Zarr store.
 has_witness: Open-Meteo's ERA5 archive has a daily variable measuring the same quantity
 (ERA5_DAILY); soil wetness and column water vapour have no like-for-like ERA5 variable.
 POWER point API and the Zarr store were checked to agree on units (PS differs: kPa vs hPa, so it is left out).
+EVPTRNS differs too (point API MJ/m²/day, Zarr W/m²); power_grid converts the grid with the exact factor
+(GRID_SCALE), and the two were checked to agree at a land cell (2026-11).
+Ocean, ice and land-surface variables (TS, FRSEAICE, FRSNO, EVPTRNS) come from the same MERRA-2 store.
+MERRA-2 sea surface temperature and sea ice are prescribed from satellite-based analyses, so over the
+ocean these are observations-based fields, not free model output.
 """
 
 START_YEAR = 1981
@@ -24,6 +29,9 @@ ERA5_DAILY = {
 }
 
 _MERRA = "NASA POWER (MERRA-2)"
+
+# Zarr grid -> point-API units, where the two differ (1 W/m² = 0.0864 MJ/m²/day)
+GRID_SCALE = {"EVPTRNS": 0.0864}
 _CERES = "NASA POWER (CERES SYN1deg)"
 
 
@@ -61,6 +69,18 @@ VARIABLES = [
     _v("tqv", "Total column water vapour", _MERRA, "TQV", "kg/m²",
        "All the water vapour in the air above a spot, from the ground up to space, shown as its weight per square metre.",
        "Warmer air holds more water vapour. Vapour traps heat, which adds to warming, and it feeds heavy rain."),
+    _v("ts", "Sea and land surface temperature", _MERRA, "TS", "°C",
+       "Temperature of the surface itself: the sea surface over the oceans, the ground over land.",
+       "Ocean surface warming drives marine heatwaves, coral bleaching and stronger storms, and the ocean stores most of the extra heat."),
+    _v("frseaice", "Sea ice cover", _MERRA, "FRSEAICE", "fraction (0-1)",
+       "The share of the sea surface covered by ice, from 0 (open water) to 1 (fully frozen).",
+       "Sea ice reflects sunlight. As it melts, darker water absorbs more heat, which speeds up polar warming."),
+    _v("frsno", "Snow cover", _MERRA, "FRSNO", "fraction (0-1)",
+       "The share of the land covered by snow, from 0 (bare) to 1 (fully snow-covered).",
+       "Snow keeps the ground cool by reflecting sunlight, and melting snow feeds rivers and drinking water in spring."),
+    _v("evptrns", "Evapotranspiration", _MERRA, "EVPTRNS", "MJ/m²/day",
+       "Water returned to the air from soil, lakes and plants (plants 'breathe out' water through their leaves), measured as the energy it takes.",
+       "It shows how hard plants and soils are working: more means a greener or wetter surface, less can mean drought stress on vegetation."),
     _v("allsky_sw", "Surface solar radiation", _CERES, "ALLSKY_SFC_SW_DWN", "MJ/m²/day",
        "Sunlight that actually reaches the ground, with clouds taken into account, as a daily average.",
        "Decides how much power solar panels make and how much energy warms the surface.",

@@ -19,6 +19,12 @@ Choices:
   anomalies, sigma_N the standard deviation and phi the lag-1 autocorrelation of the monthly
   OLS residuals. It is the total record length needed to detect the trend (90% probability,
   alpha = 0.05). Null when the trend is already significant.
+- segments: exploratory "has the pace changed?" check. A continuous two-segment (hinge) line is fitted to
+  the annual mean anomalies, y = a + b t + c max(t - year, 0), trying every break year that leaves at
+  least MIN_SEG years on each side and keeping the best fit. Reported: the break year, the slope before
+  and after (per decade) and fit_gain, the share of the straight line's residual variance the hinge
+  removes. The break year is chosen from the data, so no p-value is given; the UI labels it exploratory.
+  (A Pettitt test is not used: on a steadily trending series it reports a "break" in the middle.)
 """
 import numpy as np
 import pandas as pd
@@ -27,6 +33,7 @@ from scipy import stats
 
 ALPHA = 0.05
 MIN_MONTHS = 36
+MIN_SEG = 10  # years on each side of a break
 
 
 def _seasonal_sen_ci(values: np.ndarray, var_s: float, period: int = 12) -> tuple:
@@ -47,6 +54,32 @@ def _lag1_autocorr(r: np.ndarray) -> float:
     a, b = r[:-1], r[1:]
     ok = np.isfinite(a) & np.isfinite(b)
     return float(np.corrcoef(a[ok], b[ok])[0, 1])
+
+
+def _segments(annual: pd.Series) -> dict | None:
+    """Best continuous two-segment fit to annual anomalies (see module docstring); None if too short."""
+    annual = annual.dropna()
+    t = annual.index.values.astype(float)
+    y = annual.values.astype(float)
+    if len(y) < 2 * MIN_SEG + 1:
+        return None
+    lin = np.polyfit(t, y, 1)
+    sse_lin = float(((y - np.polyval(lin, t)) ** 2).sum())
+    best = None
+    for k in range(MIN_SEG, len(t) - MIN_SEG):
+        tau = t[k]
+        x = np.column_stack([np.ones_like(t), t, np.maximum(t - tau, 0.0)])
+        coef, *_ = np.linalg.lstsq(x, y, rcond=None)
+        sse = float(((y - x @ coef) ** 2).sum())
+        if best is None or sse < best[0]:
+            best = (sse, tau, coef)
+    sse, tau, (_, b, c) = best
+    return {
+        "break_year": int(tau),
+        "before_per_decade": float(b) * 10.0,
+        "after_per_decade": float(b + c) * 10.0,
+        "fit_gain": float(1 - sse / sse_lin) if sse_lin > 0 else 0.0,
+    }
 
 
 def _clean(v):
@@ -136,6 +169,7 @@ def analyze_trend(series: pd.Series, label: str, unit: str, where: str) -> dict:
             "ttest_t": _clean(t_stat),
             "ttest_p": _clean(t_p),
             "years_to_detect": years_to_detect,
+            "segments": _segments(annual),
         },
         "verdict": {
             "what": what,

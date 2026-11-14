@@ -95,6 +95,12 @@ CASES = [
      "citation": "Rantanen et al. (2022), Communications Earth & Environment: "
                  "The Arctic has warmed nearly four times faster than the globe since 1979.",
      "citation_url": "https://doi.org/10.1038/s43247-022-00498-3"},
+    {"id": "arctic-sea-ice", "title": "The shrinking sea ice",
+     "question": "Is the sea ice in the Barents Sea, north of Norway and Russia, shrinking?",
+     "var": "frseaice", "lat": 77.0, "lon": 40.0, "box": 5.0,
+     "citation": "Stroeve & Notz (2018), Environmental Research Letters: "
+                 "Changing state of Arctic sea ice across all seasons.",
+     "citation_url": "https://doi.org/10.1088/1748-9326/aade56"},
     {"id": "antarctic-peninsula", "title": "The pause at the bottom of the world",
      "question": "Did the Antarctic Peninsula keep warming, or did the warming stall?",
      "var": "t2m", "lat": -65.0, "lon": -63.0, "box": 5.0,
