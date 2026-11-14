@@ -182,7 +182,10 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, label
   useImperativeHandle(ref, () => ({
     flyTo: (lat, lon, ms = 1500) => {
       stopRotateRef.current();
-      globe.current?.pointOfView({ lat, lng: lon, altitude: 1.6 }, ms);
+      // On phones the case file is a bottom sheet over the lower screen: aim south of the point so the
+      // point and its marker land in the visible top part.
+      const phone = (host.current?.clientWidth ?? 1000) <= 600;
+      globe.current?.pointOfView({ lat: phone ? Math.max(-89, lat - 22) : lat, lng: lon, altitude: 1.6 }, ms);
     },
   }));
 

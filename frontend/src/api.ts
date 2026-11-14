@@ -100,6 +100,8 @@ export interface Case {
   box: number | null;
   citation: string;
   citation_url: string;
+  expect: "rising" | "falling" | "none";
+  finding: string;
 }
 
 export interface GeoPlace {

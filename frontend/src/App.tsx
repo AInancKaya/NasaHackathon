@@ -152,7 +152,10 @@ export default function App() {
   }, [varId, picked, box]);
 
   const onPick = useCallback((lat: number, lon: number) => {
-    if (window.matchMedia("(max-width: 600px)").matches) setGuide(null); // one bottom sheet at a time
+    if (window.matchMedia("(max-width: 600px)").matches) {
+      setGuide(null); // one bottom sheet at a time
+      globe.current?.flyTo(lat, lon); // keep the tapped point above the case-file sheet
+    }
     setBox(null);
     setPlace(null);
     setPicked({ lat, lon });
@@ -299,6 +302,12 @@ export default function App() {
               box={box}
               onGoto={onGoto}
               onClose={() => setPicked(null)}
+              paper={
+                tour !== null && cases?.[tour] && cases[tour].var === varId &&
+                cases[tour].lat === picked.lat && cases[tour].lon === picked.lon
+                  ? cases[tour]
+                  : undefined
+              }
             />
           </PlaceName.Provider>
         </Suspense>

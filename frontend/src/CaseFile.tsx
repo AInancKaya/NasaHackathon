@@ -32,9 +32,11 @@ interface Props {
   box?: number | null; // set by case tours: analyse the box mean instead of one point
   onClose: () => void;
   onGoto: (lat: number, lon: number) => void;
+  /** Set when a case tour opened this file: the cited paper's finding, compared with the live verdict. */
+  paper?: { expect: "rising" | "falling" | "none"; finding: string };
 }
 
-export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: Props) {
+export default function CaseFile({ variable, lat, lon, box, onClose, onGoto, paper }: Props) {
   const [series, setSeries] = useState<Series | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [witness, setWitness] = useState<Witness | null>(null);
@@ -203,6 +205,13 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
               </span>
             </div>
           </section>
+          {paper && (
+            <PaperCheck
+              paper={paper}
+              live={!series.verdict.significant ? "none" : rising ? "rising" : "falling"}
+              years={years}
+            />
+          )}
 
           <section className="cf-block" aria-label="Evidence chart">
             <h3 className="cf-h">The evidence</h3>
@@ -288,5 +297,32 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto }: P
         </div>
       </section>
     </aside>
+  );
+}
+
+const DIR_TEXT = { rising: "a significant rise", falling: "a significant fall", none: "no significant trend" };
+
+/** Tour check: does the live record agree with the cited paper? Shown honestly either way. */
+function PaperCheck({ paper, live, years }: { paper: NonNullable<Props["paper"]>; live: keyof typeof DIR_TEXT; years: string }) {
+  const agrees = paper.expect === live;
+  return (
+    <section className={`paper-check ${agrees ? "agrees" : "differs"}`} aria-label="Paper versus live data">
+      <div className="paper-check-head">
+        <h3 className="cf-h">Paper vs live data</h3>
+        <span className={`pill ${agrees ? "yes" : "no"}`}>{agrees ? "Agrees" : "Differs"}</span>
+      </div>
+      <p>
+        <strong>The paper found:</strong> {paper.finding}
+      </p>
+      <p>
+        <strong>Live NASA data, {years}:</strong> {DIR_TEXT[live]}.
+      </p>
+      {!agrees && (
+        <p className="muted">
+          A different period, place or method can change the answer. That is part of the detective work: check
+          the evidence below and how many more years would be needed.
+        </p>
+      )}
+    </section>
   );
 }

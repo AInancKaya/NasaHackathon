@@ -1049,3 +1049,30 @@ a {
     box-shadow: 0 0 0 14px transparent;
   }
 }
+
+/* Case tours: the cited paper's finding next to the live verdict */
+.paper-check {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: rgb(255 255 255 / 0.03);
+}
+.paper-check.agrees {
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+.paper-check-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.paper-check-head .cf-h {
+  margin: 0;
+}
+.paper-check p {
+  margin: 6px 0 0;
+  font-size: 14px;
+}
+.paper-check p.muted {
+  font-size: 12px;
+}
