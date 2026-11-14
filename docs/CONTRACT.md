@@ -191,6 +191,8 @@ Case {
   box: float | null
   citation: str           // published reference for the phenomenon
   citation_url: str
+  expect: "rising" | "falling" | "none"   // announced addition: the paper's finding, as a direction,
+  finding: str                            // and in one sentence (compared with the live verdict in the UI)
 }
 ```
 

@@ -11,3 +11,6 @@ cache/
 *.log
 # internal planning notes
 PLAN.md
+
+# presentation drafts (video script, subtitles)
+presentation/

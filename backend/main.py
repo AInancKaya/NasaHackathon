@@ -87,6 +87,8 @@ async def _validation(_: Request, e: RequestValidationError):
 
 
 # CASES: location, variable and citation only. All numbers are computed live via /api/series.
+# expect/finding: what the cited paper found (direction and one sentence), so the case file can say
+# whether the live 1981-2025 record agrees. Periods and methods differ from the papers', which the UI says.
 # Every citation_url is a DOI that resolves; titles/authors were checked against Crossref.
 CASES = [
     {"id": "arctic", "title": "The Arctic fever",
@@ -94,38 +96,44 @@ CASES = [
      "var": "t2m", "lat": 80.0, "lon": 20.0, "box": 5.0,
      "citation": "Rantanen et al. (2022), Communications Earth & Environment: "
                  "The Arctic has warmed nearly four times faster than the globe since 1979.",
-     "citation_url": "https://doi.org/10.1038/s43247-022-00498-3"},
+     "citation_url": "https://doi.org/10.1038/s43247-022-00498-3",
+     "expect": "rising", "finding": "The Arctic warmed nearly four times faster than the globe since 1979."},
     {"id": "arctic-sea-ice", "title": "The shrinking sea ice",
      "question": "Is the sea ice in the Barents Sea, north of Norway and Russia, shrinking?",
      "var": "frseaice", "lat": 77.0, "lon": 40.0, "box": 5.0,
      "citation": "Stroeve & Notz (2018), Environmental Research Letters: "
                  "Changing state of Arctic sea ice across all seasons.",
-     "citation_url": "https://doi.org/10.1088/1748-9326/aade56"},
+     "citation_url": "https://doi.org/10.1088/1748-9326/aade56",
+     "expect": "falling", "finding": "Arctic sea ice is declining in every season."},
     {"id": "antarctic-peninsula", "title": "The pause at the bottom of the world",
      "question": "Did the Antarctic Peninsula keep warming, or did the warming stall?",
      "var": "t2m", "lat": -65.0, "lon": -63.0, "box": 5.0,
      "citation": "Turner et al. (2016), Nature: Absence of 21st century warming on Antarctic "
                  "Peninsula consistent with natural variability.",
-     "citation_url": "https://doi.org/10.1038/nature18645"},
+     "citation_url": "https://doi.org/10.1038/nature18645",
+     "expect": "none", "finding": "No significant warming on the Peninsula in the 21st century."},
     {"id": "mediterranean", "title": "The Mediterranean drought puzzle",
      "question": "Studies of the 20th century found the Mediterranean drying. Is that drying "
                  "detectable in the satellite-era rainfall record, or would it take many more years?",
      "var": "prectotcorr", "lat": 38.0, "lon": 20.0, "box": 10.0,
      "citation": "Hoerling et al. (2012), Journal of Climate: "
                  "On the Increased Frequency of Mediterranean Drought.",
-     "citation_url": "https://doi.org/10.1175/JCLI-D-11-00296.1"},
+     "citation_url": "https://doi.org/10.1175/JCLI-D-11-00296.1",
+     "expect": "falling", "finding": "Winter droughts became more frequent over the 20th century."},
     {"id": "sahel", "title": "The Sahel's rain",
      "question": "Is rain returning to the Sahel after the great drought of the 1970s and 80s?",
      "var": "prectotcorr", "lat": 14.0, "lon": 0.0, "box": 10.0,
      "citation": "Biasutti (2019), WIREs Climate Change: "
                  "Rainfall trends in the African Sahel: Characteristics, processes, and causes.",
-     "citation_url": "https://doi.org/10.1002/wcc.591"},
+     "citation_url": "https://doi.org/10.1002/wcc.591",
+     "expect": "rising", "finding": "Rainfall has partly recovered since the drought of the 1970s and 80s."},
     {"id": "southwest-us", "title": "The Southwest dries out",
      "question": "Is the soil of the American Southwest getting drier?",
      "var": "gwettop", "lat": 37.0, "lon": -110.0, "box": 10.0,
      "citation": "Williams et al. (2020), Science: Large contribution from anthropogenic warming "
                  "to an emerging North American megadrought.",
-     "citation_url": "https://doi.org/10.1126/science.aaz9600"},
+     "citation_url": "https://doi.org/10.1126/science.aaz9600",
+     "expect": "falling", "finding": "Soil moisture fell into an emerging megadrought (2000 to 2018)."},
 ]
 
 
@@ -261,12 +269,20 @@ def _map(var: str) -> dict:
 
 
 async def _warm_maps() -> None:
-    """Fill the trend map cache in the background, default map variable first."""
+    """Fill the caches in the background: every trend map (default variable first), then the case
+    tours' series and second-witness checks, so a visitor's first clicks do not wait on NASA."""
     for v in [x for x in VARIABLES if x["has_map"]]:
         try:
             await asyncio.to_thread(_map_bytes, v["id"])
         except Exception as e:  # warm-up only; a real request reports the error itself
             log.warning("warm-up of %s failed: %s", v["id"], e)
+    for c in CASES:
+        try:
+            await asyncio.to_thread(series, c["var"], c["lat"], c["lon"], c["box"], None, None)
+            if BY_ID[c["var"]]["has_witness"]:
+                await asyncio.to_thread(witness, c["var"], c["lat"], c["lon"], None, None)
+        except Exception as e:
+            log.warning("warm-up of case %s failed: %s", c["id"], e)
 
 
 @app.get("/api/trendmap")
