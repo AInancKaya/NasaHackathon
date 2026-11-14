@@ -4,10 +4,9 @@ import { useContext } from "react";
 import type { Series } from "./api";
 import { PlaceName } from "./placeName";
 
-const fmt = (x: number) => (Math.abs(x) < 0.01 && x !== 0 ? x.toExponential(1) : x.toFixed(2));
 const fmtP = (p: number) => (p < 0.001 ? "< 0.001" : p.toFixed(3));
 
-export default function VerdictCards({ series, unit }: { series: Series; unit: string }) {
+export default function VerdictCards({ series }: { series: Series; unit?: string }) {
   const { verdict: v, stats: s } = series;
   const place = useContext(PlaceName);
   return (

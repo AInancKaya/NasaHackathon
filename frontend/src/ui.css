@@ -269,6 +269,9 @@ a {
   border-radius: 12px;
   box-shadow: 0 18px 40px rgb(0 0 0 / 0.55);
 }
+.top .search .muted {
+  display: revert; /* the phone rule that hides .top .muted must not hide search results or errors */
+}
 .search-opt {
   display: flex;
   flex-direction: column;
