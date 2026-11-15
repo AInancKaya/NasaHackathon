@@ -253,6 +253,7 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto, pap
           )}
 
           <VerdictCards series={series} unit={variable.unit} />
+          <StatsTable stats={series.stats} unit={variable.unit} />
           <p className="muted small">
             {series.source} · fetched {fmtFetched(series.fetched_at)}
           </p>
@@ -317,6 +318,49 @@ export default function CaseFile({ variable, lat, lon, box, onClose, onGoto, pap
 const DIR_TEXT = { rising: "a significant rise", falling: "a significant fall", none: "no significant trend" };
 
 /** Tour check: does the live record agree with the cited paper? Shown honestly either way. */
+const pval = (p: number) => (p < 0.001 ? "p < 0.001" : `p = ${p.toFixed(3)}`);
+const ci = (c: [number, number]) => `${signed(c[0])} to ${signed(c[1])}`;
+
+/** Every test behind the verdict, side by side: the challenge asks for the rate of change and its significance
+ *  (t-test, Mann-Kendall, confidence intervals), so all of them are shown, not only the one the verdict uses. */
+function StatsTable({ stats: s, unit }: { stats: Series["stats"]; unit: string }) {
+  const per = `${unit}/decade`;
+  return (
+    <section className="cf-block" aria-label="All the statistics">
+      <h3 className="cf-h">All the statistics</h3>
+      <table className="stats-table">
+        <tbody>
+          <tr>
+            <th>Seasonal Mann-Kendall</th>
+            <td className="mono">τ = {s.tau.toFixed(2)} · {pval(s.mk_p)}</td>
+          </tr>
+          <tr>
+            <th>Corrected for autocorrelation (Hamed-Rao)</th>
+            <td className="mono">{pval(s.mk_p_hr)} (used for the verdict, α = 0.05)</td>
+          </tr>
+          <tr>
+            <th>Sen's slope</th>
+            <td className="mono">{signed(s.sen_per_decade)} {per} · 95% CI {ci(s.sen_ci)}</td>
+          </tr>
+          <tr>
+            <th>Linear regression (OLS, anomalies)</th>
+            <td className="mono">{signed(s.reg_per_decade)} {per} · 95% CI {ci(s.reg_ci)} · {pval(s.reg_p)} · R² = {s.reg_r2.toFixed(2)}</td>
+          </tr>
+          <tr>
+            <th>Welch t-test (later vs earlier half, annual anomalies)</th>
+            <td className="mono">{/* the API reports first minus second half; flip it so a rise reads as positive t */}
+              t = {(-s.ttest_t).toFixed(2)} · {pval(s.ttest_p)}</td>
+          </tr>
+          <tr>
+            <th>Record length</th>
+            <td className="mono">n = {s.n} months</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
 function PaperCheck({ paper, live, years }: { paper: NonNullable<Props["paper"]>; live: keyof typeof DIR_TEXT; years: string }) {
   const agrees = paper.expect === live;
   return (
