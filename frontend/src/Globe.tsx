@@ -124,7 +124,11 @@ const Globe = forwardRef<GlobeHandle, Props>(function Globe({ map, picked, label
       const o = ov.createOverlay(g.getGlobeRadius(), anisotropy, renderer);
       g.scene().add(o.mesh);
       overlay.current = o;
-      if (new URLSearchParams(location.search).get("overlay") === "canvas") o.useFallback("forced by ?overlay=canvas");
+      // ?overlay=canvas forces the canvas fallback, ?overlay=shader forces the shader. Safari defaults to the
+      // canvas fallback: on a Mac Safari the shader path freezes the globe, while the fallback renders correctly.
+      const mode = new URLSearchParams(location.search).get("overlay");
+      const safari = /safari/i.test(navigator.userAgent) && !/chrome|chromium|crios|fxios|edgios|android/i.test(navigator.userAgent);
+      if (mode === "canvas" || (safari && mode !== "shader")) o.useFallback(mode === "canvas" ? "forced by ?overlay=canvas" : "Safari default");
       // Compile now, so a shader that fails on this GPU switches to the fallback before the first frame.
       renderer.compile(g.scene(), camera);
       // 8k lines on large screens; 4k on phones keeps GPU memory low
