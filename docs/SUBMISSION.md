@@ -22,8 +22,9 @@ simulated or hand-entered.
 ## Links
 
 - Project demo (30-second video): `<public video link>`
-- Final project (live app): `<public app link>`
+- Final project (live app): https://trend-detective-927925821356.europe-west1.run.app
 - Source code: `<GitHub repository link>`
+- Full walkthrough (90-second video, every feature): `<public video link>`
 
 ## Project details
 
@@ -36,6 +37,9 @@ city or click anywhere to open a case file with:
 - the monthly record, its seasonal anomaly and a trend line with a 95% confidence band;
 - four answers: what is changing, where, how much (Sen's slope per decade with its 95% interval), and
   is it significant;
+- every test side by side: seasonal Mann-Kendall (with and without the Hamed-Rao correction), Sen's
+  slope, an OLS regression with its p-value and R², and a Welch t-test of the later against the
+  earlier half;
 - a second witness: the same trend computed from Copernicus ERA5, with a badge that shows whether the
   two datasets agree;
 - the opposite twin: the place with the strongest significant trend in the other direction, shown
@@ -81,10 +85,12 @@ average about 50 km across.
 - **NASA Blue Marble Next Generation** imagery for the globe.
 - Independent check (not a space agency): Copernicus ERA5 through the Open-Meteo archive API.
 
-## Use of artificial intelligence
+## Use of Super Intelligence (SI)
 
-The code and documentation were written with assistance from Claude (Anthropic), an AI coding
-assistant, under the direction and review of the project author. Every source file carries an AI
+The code and documentation were written with assistance from Claude (Anthropic), an SI coding
+assistant, under the direction and review of the project author. Claude also scripted the screen
+recording and the cuts of the demo video; the footage is the real app, not generated imagery, and
+the end card says so. Every source file carries an AI
 disclosure header. The app itself uses no AI at run time: every result comes from rule-based
 statistics on live NASA data.
 

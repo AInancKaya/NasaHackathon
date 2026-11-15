@@ -197,6 +197,24 @@ p {
 .cf-block {
   margin-top: 18px;
 }
+.stats-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.stats-table th,
+.stats-table td {
+  padding: 7px 0;
+  border-top: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.stats-table th {
+  font-weight: 500;
+  color: var(--text-muted);
+  padding-right: 12px;
+  width: 42%;
+}
 .cf-h {
   margin: 0 0 6px;
   font-size: 12px;
